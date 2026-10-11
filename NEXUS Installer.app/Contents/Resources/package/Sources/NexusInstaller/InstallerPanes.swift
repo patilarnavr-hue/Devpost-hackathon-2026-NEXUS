@@ -250,7 +250,7 @@ struct InstallPane: View {
                             }
                             .padding(12)
                         }
-                        .onChange(of: model.log.count) { _ in
+                        .onChange(of: model.log.count) {
                             if let last = model.log.last { proxy.scrollTo(last.id, anchor: .bottom) }
                         }
                     }

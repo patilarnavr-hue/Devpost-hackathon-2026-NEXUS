@@ -149,7 +149,7 @@ final class InstallRunner {
             return
         }
         log("Command Line Tools missing — opening installer dialog…", .warn)
-        try? Shell.run("/usr/bin/xcode-select", ["--install"])
+        _ = try? Shell.run("/usr/bin/xcode-select", ["--install"])
         log("Complete the GUI install, then re-run the installer.", .warn)
         await fail(0, "Command Line Tools not installed")
     }
@@ -164,15 +164,15 @@ final class InstallRunner {
         } else {
             log("Downloading Ollama (~200 MB)…", .info)
             let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("Ollama.dmg")
-            if let (code, _, err) = try? Shell.run("/usr/bin/curl", ["-L", "-s", "-o", tmp.path, "https://ollama.com/download/Ollama.dmg"]),
+            if let (code, _, _) = try? Shell.run("/usr/bin/curl", ["-L", "-s", "-o", tmp.path, "https://ollama.com/download/Ollama.dmg"]),
                code == 0 {
                 log("✓ Downloaded", .ok)
-                try? Shell.run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-quiet", tmp.path])
+                _ = try? Shell.run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-quiet", tmp.path])
                 let vol = URL(fileURLWithPath: "/Volumes/Ollama")
                 if let (_, _, _) = try? Shell.run("/bin/cp", ["-R", vol.appendingPathComponent("Ollama.app").path, "/Applications/"]),
                    FileManager.default.fileExists(atPath: ollamaCLI) {
                     log("✓ Installed to /Applications", .ok)
-                    try? Shell.run("/usr/bin/hdiutil", ["detach", vol.path, "-quiet"])
+                    _ = try? Shell.run("/usr/bin/hdiutil", ["detach", vol.path, "-quiet"])
                 } else {
                     await fail(1, "Failed to copy Ollama.app")
                     return
@@ -187,7 +187,7 @@ final class InstallRunner {
         let alive = (try? Shell.run("/usr/bin/curl", ["-sfm", "2", "http://127.0.0.1:11434/api/version"]))
         if alive == nil || alive?.0 != 0 {
             log("Starting Ollama server…", .info)
-            _ = Shell.detach(ollamaCLI, ["serve"])
+            Shell.detach(ollamaCLI, ["serve"])
             for _ in 0..<20 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 if ((try? Shell.run("/usr/bin/curl", ["-sfm", "2", "http://127.0.0.1:11434/api/version"]))?.0) == 0 {
@@ -233,7 +233,7 @@ final class InstallRunner {
         if result?.0 == 0 {
             log("✓ Built: Nexus/.build/release/Nexus", .ok)
             // refresh the .app bundle
-            try? Shell.run("/bin/cp", [paths.nexusPkg.appendingPathComponent(".build/release/Nexus").path,
+            _ = try? Shell.run("/bin/cp", [paths.nexusPkg.appendingPathComponent(".build/release/Nexus").path,
                                        paths.nexusApp.appendingPathComponent("Contents/MacOS/Nexus").path])
         } else {
             await fail(3, "swift build failed: \((result?.1 ?? "") + (result?.2 ?? "")).prefix(400)")
@@ -253,8 +253,8 @@ final class InstallRunner {
         let dest = appsURL.appendingPathComponent("NexusTriangle.app")
 
         if paths.triangleApp.path != dest.path {
-            try? Shell.run("/bin/rm", ["-rf", dest.path])
-            try? Shell.run("/bin/cp", ["-R", paths.triangleApp.path, dest.path])
+            _ = try? Shell.run("/bin/rm", ["-rf", dest.path])
+            _ = try? Shell.run("/bin/cp", ["-R", paths.triangleApp.path, dest.path])
             log("✓ Installed to /Applications", .ok)
         }
 
@@ -275,13 +275,13 @@ final class InstallRunner {
                 try FileManager.default.createDirectory(at: agents, withIntermediateDirectories: true)
                 let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
                 try data.write(to: plistURL, options: .atomic)
-                try? Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/com.nexus.triangle"])
+                _ = try? Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/com.nexus.triangle"])
                 let boot = try? Shell.run("/bin/launchctl", ["bootstrap", "gui/\(getuid())", plistURL.path])
                 if boot?.0 == 0 { log("✓ Registered as login item (always runs)", .ok) }
                 else {
                     log("Registering via launchctl load…", .warn)
-                    try? Shell.run("/bin/launchctl", ["enable", "gui/\(getuid())/com.nexus.triangle"])
-                    try? Shell.run("/bin/launchctl", ["load", "-w", plistURL.path])
+                    _ = try? Shell.run("/bin/launchctl", ["enable", "gui/\(getuid())/com.nexus.triangle"])
+                    _ = try? Shell.run("/bin/launchctl", ["load", "-w", plistURL.path])
                 }
             } catch {
                 log("⚠ Could not register login item: \(error.localizedDescription)", .warn)
@@ -334,7 +334,7 @@ final class InstallRunner {
         let nexusScript = dir.appendingPathComponent("nexus")
         let triScript = dir.appendingPathComponent("nexus-triangle")
 
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        _ = try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let nexusCmd = """
         #!/bin/zsh
         exec "\(paths.nexusApp.path)/Contents/MacOS/Nexus" "$@"
@@ -343,7 +343,7 @@ final class InstallRunner {
         #!/bin/zsh
         exec "\(appsURL().appendingPathComponent("NexusTriangle.app/Contents/MacOS/NexusTriangle").path)" "$@"
         """
-        try? nexusCmd.write(to: nexusScript, atomically: true, encoding: .utf8)
+        _ = try? nexusCmd.write(to: nexusScript, atomically: true, encoding: .utf8)
         try? triCmd.write(to: triScript, atomically: true, encoding: .utf8)
         try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: nexusScript.path)
         try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: triScript.path)
@@ -380,14 +380,14 @@ final class InstallRunner {
         let bin = URL(fileURLWithPath: "/usr/local/bin/nexus")
         let script = "\(paths.nexusApp.path)/Contents/MacOS/Nexus"
         do {
-            try? FileManager.default.createDirectory(at: bin.deletingLastPathComponent(), withIntermediateDirectories: true)
+            _ = try? FileManager.default.createDirectory(at: bin.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? FileManager.default.removeItem(at: bin)
             try FileManager.default.createSymbolicLink(at: bin, withDestinationURL: URL(fileURLWithPath: script))
             log("✓ /usr/local/bin/nexus created", .ok)
         } catch {
             log("⚠ /usr/local/bin needs admin — using ~/.local/bin instead", .warn)
             let home = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/nexus")
-            try? FileManager.default.createDirectory(at: home.deletingLastPathComponent(), withIntermediateDirectories: true)
+            _ = try? FileManager.default.createDirectory(at: home.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? FileManager.default.removeItem(at: home)
             try? FileManager.default.createSymbolicLink(at: home, withDestinationURL: URL(fileURLWithPath: script))
         }

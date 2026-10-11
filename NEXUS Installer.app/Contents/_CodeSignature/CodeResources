@@ -166,7 +166,7 @@
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallEngine.swift</key>
 		<data>
-		S5qyicpLb0xfnjsCFetiSuwoNZA=
+		WMIlUoD1caOVbvI/8fRtsZCF9jo=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallerApp.swift</key>
 		<data>
@@ -174,7 +174,7 @@
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallerPanes.swift</key>
 		<data>
-		Kfha98QOliV/mR/rQ0iz3VPzw/U=
+		YYlGB9V5L7Trds4lJ5hXYbl0AaA=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/PaneChrome.swift</key>
 		<data>
@@ -647,11 +647,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			S5qyicpLb0xfnjsCFetiSuwoNZA=
+			WMIlUoD1caOVbvI/8fRtsZCF9jo=
 			</data>
 			<key>hash2</key>
 			<data>
-			+qcmugiO8iODp8DImUTSzISOkdl/hV9MsgfMyhUpECQ=
+			uARzLx4Qkb2aUx5w1qm8AzDtzcW5EphCNAG7aGEVMl0=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/InstallerApp.swift</key>
@@ -669,11 +669,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			Kfha98QOliV/mR/rQ0iz3VPzw/U=
+			YYlGB9V5L7Trds4lJ5hXYbl0AaA=
 			</data>
 			<key>hash2</key>
 			<data>
-			KgJ70LWsLbHQGDMCxFZZnUGPxN9wRTkXEBMMKlmYIcE=
+			kv6+wlN8EY+Mdc7Zdg2J5DtEbWBgVJaRkyc5ZtucegM=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/PaneChrome.swift</key>
