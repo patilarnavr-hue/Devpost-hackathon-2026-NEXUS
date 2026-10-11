@@ -1143,7 +1143,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         subLabel.stringValue = "CHAT"
         field.stringValue = ""
         chatHistory = [["role": "system",
-                        "content": "You are NEXUS, a quick assistant living in a red-triangle macOS companion. Reply in under 60 words, plain text, no markdown, no lists unless asked."]]
+                        "content": "You are NEXUS, a helpful assistant living in a red-triangle macOS companion. The user chats with you in a small terminal-style panel. Give useful, concrete, friendly answers in plain text — no markdown, no lists unless asked. Keep it under 60 words unless the question needs more."]]
         State.shared.set(.reasoning, "quick chat — ask anything")
         hint.stringValue = "⏎ ask · esc dismiss · ⌘P pin · reopen lens for commands"
         for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
@@ -1159,7 +1159,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         stack.addArrangedSubview(chatRow("▸ \(q)"))
         chatHistory.append(["role": "user", "content": q])
         if chatHistory.count > 12 { chatHistory.removeFirst(chatHistory.count - 12) }
-        askOllama(chatHistory) { [weak self] json, err in
+        askOllama(chatHistory, chat: true) { [weak self] json, err in
             guard let self = self else { return }
             let reply = (json?["message"] as? [String: Any])?["content"] as? String
                 ?? "no reply — \(err?.localizedDescription ?? agentModel + " offline")"
@@ -1911,15 +1911,15 @@ private func agentSystemPrompt() -> String {
     """
 }
 
-@MainActor private func askOllama(_ msgs: [[String: Any]]? = nil, _ done: @escaping ([String: Any]?, Error?) -> Void) {
+@MainActor private func askOllama(_ msgs: [[String: Any]]? = nil, chat: Bool = false, _ done: @escaping ([String: Any]?, Error?) -> Void) {
     guard let url = URL(string: "http://localhost:11434/api/chat") else { done(nil, nil); return }
-    let body: [String: Any] = [
+    var body: [String: Any] = [
         "model": agentModel,
         "messages": msgs ?? agentHistory,
-        "tools": agentTools,
         "stream": false,
-        "options": ["temperature": 0.2, "num_predict": 200]
+        "options": ["temperature": chat ? 0.7 : 0.2, "num_predict": chat ? 400 : 200]
     ]
+    if !chat { body["tools"] = agentTools }
     var req = URLRequest(url: url)
     req.httpMethod = "POST"
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
