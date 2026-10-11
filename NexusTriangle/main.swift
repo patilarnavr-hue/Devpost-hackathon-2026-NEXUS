@@ -29,8 +29,26 @@ final class State {
     }
     var overlay: OverlayController?
     var lens: LensController?
-    func set(_ s: TriState) { overlay?.setState(s); lens?.reflectState(s) }
-    func set(_ s: TriState, _ detail: String) { overlay?.setState(s); lens?.reflectState(s, detail) }
+    private var idleWork: DispatchWorkItem?
+
+    func set(_ s: TriState) { apply(s, detail: nil) }
+    func set(_ s: TriState, _ detail: String) { apply(s, detail: detail) }
+
+    private func apply(_ s: TriState, detail: String?) {
+        idleWork?.cancel()
+        idleWork = nil
+        overlay?.setState(s)
+        if let detail = detail { lens?.reflectState(s, detail) } else { lens?.reflectState(s) }
+        guard s != .idle else { return }
+        let w = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.overlay?.setState(.idle)
+            self.lens?.reflectState(.idle)
+            self.idleWork = nil
+        }
+        idleWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: w)
+    }
 }
 
 // Mark:- Triangle View
@@ -53,6 +71,23 @@ final class TriangleView: NSView {
     }
     var trajEnd: CGPoint? {
         didSet { layoutTraj() }
+    }
+
+    private var glowing = false
+
+    func setGlow(_ on: Bool) {
+        if on {
+            glowing = true
+            tri.shadowColor = NSColor(calibratedRed: 1, green: 0.45, blue: 0.4, alpha: 1).cgColor
+            tri.shadowRadius = 26
+            tri.shadowOpacity = 1
+            tri.fillColor = NSColor(calibratedRed: 1, green: 0.72, blue: 0.62, alpha: 1).cgColor
+            animate(tri, "transform.scale", 1.3, 1.08, dur: 0.3, timing: .init(name: .easeOut))
+        } else if glowing {
+            glowing = false
+            tri.shadowColor = NSColor.black.cgColor
+            apply(state)
+        }
     }
 
     override init(frame: NSRect) {
@@ -128,6 +163,39 @@ final class TriangleView: NSView {
     override func layout() {
         super.layout()
         tri.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        if state == .idle { addOrbit() }
+        LoginItem.log("triangle layout \(Int(bounds.width))x\(Int(bounds.height))")
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if state == .idle { addOrbit() }
+        LoginItem.log("triangle viewDidMoveToWindow window=\(window != nil)")
+    }
+
+    func ensureOrbit() {
+        if state == .idle, tri.animation(forKey: "orbit") == nil { addOrbit() }
+    }
+
+    private func addOrbit() {
+        guard bounds.width > 0 else {
+            LoginItem.log("orbit deferred — bounds 0")
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.state == .idle else { return }
+                self.addOrbit()
+            }
+            return
+        }
+        let r: CGFloat = 44
+        let path = CGMutablePath()
+        path.addEllipse(in: CGRect(x: bounds.midX - r, y: bounds.midY - r, width: r * 2, height: r * 2))
+        let orbit = CAKeyframeAnimation(keyPath: "position")
+        orbit.path = path
+        orbit.duration = 6.0
+        orbit.repeatCount = .greatestFiniteMagnitude
+        orbit.timingFunction = CAMediaTimingFunction(name: .linear)
+        tri.add(orbit, forKey: "orbit")
+        LoginItem.log("orbit added on \(Int(bounds.width))pt view")
     }
 
     private func animate(_ layer: CAShapeLayer, _ key: String, _ from: CGFloat, _ to: CGFloat, dur: CFTimeInterval = 0.9, repeat_: Float = 0, timing: CAMediaTimingFunction = .init(name: .easeOut)) {
@@ -158,6 +226,7 @@ final class TriangleView: NSView {
         switch s {
         case .idle:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
+            addOrbit()
             animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
         case .lock:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.2, blue: 0.16, alpha: 1).cgColor
@@ -280,6 +349,7 @@ final class OverlayController {
     private var dwellElem: String? = nil
     private var dwellStart: Date = .distantPast
     private var lastLockKey: String? = nil
+    private var lastPress = false
 
     init() {
         panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 120, height: 120),
@@ -328,7 +398,13 @@ final class OverlayController {
     private func tick() {
         let m = NSEvent.mouseLocation
         mouse = m
-        let tx = m.x + 15, ty = m.y - 1
+        let pressed = NSEvent.pressedMouseButtons & 3 != 0
+        if pressed != lastPress {
+            lastPress = pressed
+            triView.setGlow(pressed)
+        }
+        triView.ensureOrbit()
+        let tx = m.x, ty = m.y
         let dt: CGFloat = 1.0 / 60.0
         let k = 1 - exp(-dt * 14)
         pos.x += (tx - pos.x) * k
@@ -577,6 +653,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
     private var clipRows: [String] = []
     private var lastClipCount = 0
     private var previousApp: NSRunningApplication?
+    private var chatMode = false
     private(set) var isOpen = false
 
     static let width: CGFloat = 370
@@ -688,6 +765,8 @@ final class LensController: NSObject, NSTextFieldDelegate {
         field.stringValue = ""
         reflectState(.idle)
         previousApp = NSWorkspace.shared.frontmostApplication
+        chatMode = false
+        subLabel.stringValue = "COMMAND"
         isOpen = true
         panel.setFrameOrigin(positionForHeight(104))
         panel.orderFrontRegardless()
@@ -707,6 +786,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         agentAbort()
         isOpen = false
         pinned = false
+        chatMode = false
         stopFollow()
         stopKeyMonitor()
         panel.orderOut(nil)
@@ -717,8 +797,10 @@ final class LensController: NSObject, NSTextFieldDelegate {
     func togglePin() {
         pinned.toggle()
         hint.stringValue = pinned
-            ? "▮ PINNED — esc dismiss   ·   ⌘P unpin"
-            : "⏎ execute   ·   esc dismiss   ·   ⌘P pin"
+            ? "▮ PINNED — \(chatMode ? "ask away" : "esc dismiss")   ·   ⌘P unpin"
+            : chatMode
+                ? "⏎ ask · esc dismiss   ·   ⌘P pin"
+                : "⏎ execute   ·   esc dismiss   ·   ⌘P pin"
         if !pinned { followTick() }
     }
 
@@ -1038,8 +1120,89 @@ final class LensController: NSObject, NSTextFieldDelegate {
 
     // MARK: routing
 
+    private func showHelp() {
+        State.shared.set(.verified, "COMMANDS")
+        agentSteps = [
+            "find <file> — search files · reveal <file> · open <file> in <app>",
+            "open <app> — launch an application · screenshot — capture region",
+            "agent <task> — AI drives the cursor (needs Accessibility)",
+            "record <name> — capture mouse & keys · stop — save macro",
+            "replay <name> / play <name> — run saved macro · macros — list",
+            "clip / clip <query> — clipboard inbox · COPY / PASTE buttons",
+            "esc dismiss · ✕ close · ⌘P pin lens in place (stop following)"
+        ]
+        rebuildSteps()
+        resize(agentSteps.count)
+    }
+
+    // MARK: quick chat
+
+    func openChat() {
+        if !isOpen { open() }
+        chatMode = true
+        subLabel.stringValue = "CHAT"
+        field.stringValue = ""
+        chatHistory = [["role": "system",
+                        "content": "You are NEXUS, a quick assistant living in a red-triangle macOS companion. Reply in under 60 words, plain text, no markdown, no lists unless asked."]]
+        State.shared.set(.reasoning, "quick chat — ask anything")
+        hint.stringValue = "⏎ ask · esc dismiss · ⌘P pin · reopen lens for commands"
+        for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
+        resize(0)
+    }
+
+    private func quickChat(_ text: String) {
+        let q = text.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        if agentBusy || isRecording { respond("BUSY — finish current task first", .blocked); return }
+        State.shared.set(.reasoning, "thinking · \(agentModel)")
+        for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
+        stack.addArrangedSubview(chatRow("▸ \(q)"))
+        chatHistory.append(["role": "user", "content": q])
+        if chatHistory.count > 12 { chatHistory.removeFirst(chatHistory.count - 12) }
+        askOllama(chatHistory) { [weak self] json, err in
+            guard let self = self else { return }
+            let reply = (json?["message"] as? [String: Any])?["content"] as? String
+                ?? "no reply — \(err?.localizedDescription ?? agentModel + " offline")"
+            chatHistory.append(["role": "assistant", "content": reply])
+            self.stack.addArrangedSubview(self.chatRow("◂ \(reply)"))
+            self.resize(self.stack.arrangedSubviews.count)
+            State.shared.set(.verified, "REPLY · \(agentModel)")
+        }
+    }
+
+    private func chatRow(_ text: String) -> NSView {
+        let lines = max(1, Int(ceil(Double(text.count) / 54.0)))
+        let h = CGFloat(16 * lines + 8)
+        let v = NSView(frame: NSRect(x: 0, y: 0, width: Self.width - 24, height: h))
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        label.textColor = text.hasPrefix("▸")
+            ? NSColor(calibratedRed: 1, green: 0.55, blue: 0.5, alpha: 1)
+            : .white
+        label.lineBreakMode = .byWordWrapping
+        label.translatesAutoresizingMaskIntoConstraints = false
+        v.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leftAnchor.constraint(equalTo: v.leftAnchor, constant: 4),
+            label.rightAnchor.constraint(equalTo: v.rightAnchor),
+            label.topAnchor.constraint(equalTo: v.topAnchor, constant: 2),
+            v.heightAnchor.constraint(equalToConstant: h)
+        ])
+        return v
+    }
+
     private func route(_ text: String) {
         let low = text.lowercased()
+
+        if chatMode {
+            quickChat(text)
+            return
+        }
+
+        if low == "help" || low == "?" || low == "commands" || low.contains("help") {
+            showHelp()
+            return
+        }
 
         if low.hasPrefix("agent") || low.contains("agent mode") || low.contains("agent drive")
             || low.hasPrefix("do it") || low.contains("by yourself") || low.contains("take over the cursor")
@@ -1333,6 +1496,7 @@ private func hotkeyHandler(nextHandler: EventHandlerCallRef?, event: EventRef?, 
         switch hid {
         case 1, 3, 4, 5: State.shared.lens?.toggle()
         case 2: State.shared.lens?.close()
+        case 6: State.shared.lens?.openChat()
         default: break
         }
     }
@@ -1355,6 +1519,7 @@ private func installHotKeys() {
     reg(UInt32(kVK_Control), UInt32(controlKey), 3)  // ⌃⌃ (backup; modifier keys emit flagsChanged)
     reg(UInt32(kVK_Command), UInt32(cmdKey), 4)      // ⌘⌘ (backup)
     reg(UInt32(kVK_Space), UInt32(controlKey | optionKey), 5)  // ⌃⌥Space — no permissions needed
+    reg(UInt32(kVK_ANSI_C), UInt32(controlKey | optionKey), 6) // ⌃⌥C — quick chat
 }
 
 private func installGlobalMonitor() {
@@ -1488,6 +1653,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         closeItem.target = self
         let pinItem = menu.addItem(withTitle: "Pin / Unpin Lens  (⌘P)", action: #selector(lensPin), keyEquivalent: "")
         pinItem.target = self
+        let chatItem = menu.addItem(withTitle: "Quick Chat  (⌃⌥C)", action: #selector(lensChat), keyEquivalent: "")
+        chatItem.target = self
         let triItem = menu.addItem(withTitle: "Hide Triangle", action: #selector(toggleTri), keyEquivalent: "")
         triItem.target = self
         menu.addItem(.separator())
@@ -1508,6 +1675,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !lens.isOpen { lens.open() }
         lens.togglePin()
     }
+    @objc private func lensChat() { lens.openChat() }
     private func pickModel() {
         guard let url = URL(string: "http://localhost:11434/api/tags") else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
@@ -1557,6 +1725,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @MainActor var agentBusy = false
 @MainActor private var agentCancelled = false
 private var agentHistory: [[String: Any]] = []
+private var chatHistory: [[String: Any]] = []
 private var agentSteps: [String] = []
 private var agentCursor: CGPoint = .zero
 @MainActor private var agentNudges = 0
@@ -1742,11 +1911,11 @@ private func agentSystemPrompt() -> String {
     """
 }
 
-@MainActor private func askOllama(_ done: @escaping ([String: Any]?, Error?) -> Void) {
+@MainActor private func askOllama(_ msgs: [[String: Any]]? = nil, _ done: @escaping ([String: Any]?, Error?) -> Void) {
     guard let url = URL(string: "http://localhost:11434/api/chat") else { done(nil, nil); return }
     let body: [String: Any] = [
         "model": agentModel,
-        "messages": agentHistory,
+        "messages": msgs ?? agentHistory,
         "tools": agentTools,
         "stream": false,
         "options": ["temperature": 0.2, "num_predict": 200]
