@@ -560,12 +560,23 @@ final class LensController: NSObject, NSTextFieldDelegate {
     private let stateLabel = NSTextField(labelWithString: "")
     private let field = CommandField()
     private let stack = NSStackView()
-    private let hint = NSTextField(labelWithString: "⏎ execute   ·   esc dismiss")
+    private let hint = NSTextField(labelWithString: "⏎ execute   ·   esc dismiss   ·   ⌘P pin")
+    private var closeBtn: NSButton!
     private var rows: [FileRow] = []
     private let searcher = FileSearch()
     private var appCache: [(String, URL)]?
     private var pendingQuery: String = ""
     private var followTimer: Timer?
+    private var keyMonitor: Any?
+    private(set) var pinned = false
+    private(set) var isRecording = false
+    private(set) var isReplaying = false
+    private var macroName = ""
+    private var clipper: Timer?
+    private var clips: [String] = []
+    private var clipRows: [String] = []
+    private var lastClipCount = 0
+    private var previousApp: NSRunningApplication?
     private(set) var isOpen = false
 
     static let width: CGFloat = 370
@@ -626,6 +637,13 @@ final class LensController: NSObject, NSTextFieldDelegate {
         field.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(field)
 
+        closeBtn = NSButton(title: "✕", target: self, action: #selector(doClose))
+        closeBtn.font = .monospacedSystemFont(ofSize: 11, weight: .bold)
+        closeBtn.isBordered = false
+        closeBtn.contentTintColor = NSColor(white: 0.6, alpha: 1)
+        closeBtn.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(closeBtn)
+
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 0
@@ -642,9 +660,12 @@ final class LensController: NSObject, NSTextFieldDelegate {
             titleLabel.topAnchor.constraint(equalTo: content.topAnchor, constant: 12),
             subLabel.leftAnchor.constraint(equalTo: titleLabel.rightAnchor, constant: 8),
             subLabel.lastBaselineAnchor.constraint(equalTo: titleLabel.lastBaselineAnchor),
-            stateLabel.rightAnchor.constraint(equalTo: content.rightAnchor, constant: -14),
+            stateLabel.rightAnchor.constraint(equalTo: content.rightAnchor, constant: -30),
             stateLabel.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
             stateLabel.leftAnchor.constraint(greaterThanOrEqualTo: subLabel.rightAnchor, constant: 10),
+            closeBtn.rightAnchor.constraint(equalTo: content.rightAnchor, constant: -10),
+            closeBtn.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            closeBtn.widthAnchor.constraint(equalToConstant: 18),
             field.leftAnchor.constraint(equalTo: content.leftAnchor, constant: 12),
             field.rightAnchor.constraint(equalTo: content.rightAnchor, constant: -12),
             field.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
@@ -666,6 +687,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         rows = []; rebuildRows(); resize(0)
         field.stringValue = ""
         reflectState(.idle)
+        previousApp = NSWorkspace.shared.frontmostApplication
         isOpen = true
         panel.setFrameOrigin(positionForHeight(104))
         panel.orderFrontRegardless()
@@ -673,13 +695,45 @@ final class LensController: NSObject, NSTextFieldDelegate {
         panel.makeFirstResponder(field)
         NSApp.activate(ignoringOtherApps: true)
         startFollow()
+        startKeyMonitor()
+        if clipper == nil {
+            loadClips()
+            clipper = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in self?.pollClips() }
+            RunLoop.main.add(clipper!, forMode: .common)
+        }
     }
 
     func close() {
         agentAbort()
         isOpen = false
+        pinned = false
         stopFollow()
+        stopKeyMonitor()
         panel.orderOut(nil)
+    }
+
+    @objc private func doClose() { close() }
+
+    func togglePin() {
+        pinned.toggle()
+        hint.stringValue = pinned
+            ? "▮ PINNED — esc dismiss   ·   ⌘P unpin"
+            : "⏎ execute   ·   esc dismiss   ·   ⌘P pin"
+        if !pinned { followTick() }
+    }
+
+    private func startKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            if event.keyCode == 53 { self.close(); return nil }
+            if event.keyCode == 35, event.modifierFlags.contains(.command) { self.togglePin(); return nil }
+            return event
+        }
+    }
+
+    private func stopKeyMonitor() {
+        if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
     }
 
     private func anchorPoint() -> NSPoint {
@@ -721,10 +775,221 @@ final class LensController: NSObject, NSTextFieldDelegate {
     }
 
     private func followTick() {
-        guard isOpen else { return }
+        guard isOpen, !pinned else { return }
         if State.shared.overlay?.agentActive == true { return }
+        if isRecording { return }
         let o = positionForHeight(panel.frame.height)
         if o != panel.frame.origin { panel.setFrameOrigin(o) }
+    }
+
+    // MARK: macros (record & replay)
+
+    func startRecording(_ name: String) {
+        guard AXIsProcessTrusted() else {
+            respond("PERMISSION REQUIRED — Accessibility (menu bar ▸ Grant Accessibility…)", .blocked)
+            return
+        }
+        if isRecording { respond("ALREADY RECORDING — say stop first", .blocked); return }
+        if isReplaying { respond("REPLAY IN PROGRESS", .blocked); return }
+        macroName = name.isEmpty ? "macro-\(Int(Date().timeIntervalSince1970) % 100000)" : name
+        if !MacroTap.start() { respond("EVENT TAP DENIED — grant Accessibility", .blocked); return }
+        isRecording = true
+        State.shared.overlay?.agentActive = true
+        State.shared.set(.executing, "REC \(macroName) — move & click · stop to end")
+        agentSteps = ["● REC \(macroName)", "say 'stop' to save · 'replay \(macroName)' to run"]
+        rebuildSteps(); resize(2)
+    }
+
+    func stopRecording() {
+        guard isRecording else { respond("NOTHING TO STOP", .blocked); return }
+        isRecording = false
+        State.shared.overlay?.agentActive = false
+        let evs = MacroTap.stop()
+        guard !evs.isEmpty else { respond("EMPTY RECORDING — nothing captured", .blocked); return }
+        let m = Macro(name: macroName, events: evs)
+        MacroStore.save(m)
+        State.shared.set(.verified, "RECORDED \(macroName) — \(evs.count) events")
+        agentSteps = ["✓ \(macroName) saved — \(evs.count) events", "replay \(macroName) to run it"]
+        rebuildSteps(); resize(2)
+    }
+
+    func replayMacro(_ rawName: String) {
+        let name = rawName.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !isRecording else { respond("RECORDING — say stop first", .blocked); return }
+        guard let m = MacroStore.load(name) else {
+            respond("NO MACRO '\(name)' — \(MacroStore.list().isEmpty ? "record one first" : MacroStore.list().joined(separator: ", "))", .blocked)
+            return
+        }
+        guard AXIsProcessTrusted() else {
+            respond("PERMISSION REQUIRED — Accessibility to replay", .blocked)
+            return
+        }
+        isReplaying = true
+        State.shared.overlay?.agentActive = true
+        State.shared.set(.executing, "REPLAY \(m.name)")
+        agentSteps = ["▶ \(m.name) — \(m.events.count) events"]
+        rebuildSteps(); resize(1)
+        let wasOpen = isOpen
+        panel.orderOut(nil)
+        let t0 = DispatchTime.now()
+        for ev in m.events {
+            DispatchQueue.main.asyncAfter(deadline: t0 + .milliseconds(Int(ev.t))) { [weak self] in self?.playOne(ev) }
+        }
+        let endMs = Int(m.events.last?.t ?? 0) + 80
+        DispatchQueue.main.asyncAfter(deadline: t0 + .milliseconds(endMs)) { [weak self] in
+            guard let self = self else { return }
+            self.isReplaying = false
+            State.shared.overlay?.agentActive = false
+            State.shared.overlay?.execTarget = nil
+            if wasOpen { self.panel.orderFrontRegardless(); self.panel.makeKeyAndOrderFront(nil) }
+            self.respond("MACRO VERIFIED — \(m.name)", .verified)
+        }
+    }
+
+    private func playOne(_ ev: MacroEvent) {
+        let src = agentPostSource()
+        switch ev.type {
+        case "move":
+            let p = CGPoint(x: ev.x, y: ev.y)
+            if let e = CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left) {
+                e.post(tap: .cghidEventTap)
+            }
+            State.shared.overlay?.execTarget = p
+        case "md", "mu":
+            let t: CGEventType = ev.type == "md" ? .leftMouseDown : .leftMouseUp
+            if let e = CGEvent(mouseEventSource: src, mouseType: t, mouseCursorPosition: CGPoint(x: ev.x, y: ev.y), mouseButton: .left) {
+                e.post(tap: .cghidEventTap)
+            }
+        case "key":
+            if let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(ev.keyCode), keyDown: true) {
+                e.flags = CGEventFlags(rawValue: UInt64(ev.flags))
+                if !ev.text.isEmpty {
+                    var units = Array(ev.text.utf16)
+                    e.keyboardSetUnicodeString(stringLength: units.count, unicodeString: &units)
+                }
+                e.post(tap: .cghidEventTap)
+            }
+            if let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(ev.keyCode), keyDown: false) {
+                e.post(tap: .cghidEventTap)
+            }
+        default: break
+        }
+    }
+
+    // MARK: clipboard inbox
+
+    private var clipsFile: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/clips.json")
+    }
+
+    private func loadClips() {
+        if let d = try? Data(contentsOf: clipsFile),
+           let a = try? JSONDecoder().decode([String].self, from: d) { clips = a }
+        lastClipCount = NSPasteboard.general.changeCount
+    }
+
+    private func saveClips() {
+        try? FileManager.default.createDirectory(at: clipsFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? JSONEncoder().encode(clips).write(to: clipsFile)
+    }
+
+    private func pollClips() {
+        let pb = NSPasteboard.general
+        guard pb.changeCount != lastClipCount else { return }
+        lastClipCount = pb.changeCount
+        guard let s = pb.string(forType: .string) else { return }
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, t.count <= 2000 else { return }
+        if clips.first != t {
+            clips.insert(t, at: 0)
+            if clips.count > 40 { clips.removeLast(clips.count - 40) }
+            saveClips()
+        }
+    }
+
+    private func runClipSearch(_ text: String) {
+        let stop: Set<String> = ["clip", "clips", "clipboard", "the", "a", "an", "of", "for", "my", "find", "search", "show", "get"]
+        let tokens = text.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count >= 2 && !stop.contains($0) }
+        let hits: [String]
+        if tokens.isEmpty {
+            hits = Array(clips.prefix(8))
+        } else {
+            hits = clips.filter { c in let n = c.lowercased(); return tokens.contains { n.contains($0) } }.prefix(8).map { $0 }
+        }
+        if hits.isEmpty { respond("CLIPBOARD EMPTY — no matches", .blocked); return }
+        clipRows = hits
+        rebuildClipRows()
+        resize(hits.count)
+        respond("CLIPS — \(hits.count)", .verified)
+    }
+
+    private func rebuildClipRows() {
+        for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
+        for (i, text) in clipRows.enumerated() { stack.addArrangedSubview(clipRow(text, index: i)) }
+    }
+
+    private func clipRow(_ text: String, index: Int) -> NSView {
+        let v = NSView(frame: NSRect(x: 0, y: 0, width: Self.width - 24, height: 34))
+        let preview = String(text.replacingOccurrences(of: "\n", with: " ").prefix(64))
+        let label = NSTextField(labelWithString: preview)
+        label.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        label.textColor = .white
+        label.lineBreakMode = .byTruncatingTail
+        label.translatesAutoresizingMaskIntoConstraints = false
+        let copyBtn = NSButton(title: "COPY", target: self, action: #selector(clipCopy(_:)))
+        let pasteBtn = NSButton(title: "PASTE", target: self, action: #selector(clipPaste(_:)))
+        copyBtn.tag = index; pasteBtn.tag = index
+        for b in [copyBtn, pasteBtn] {
+            b.font = .monospacedSystemFont(ofSize: 8, weight: .bold)
+            b.isBordered = false
+            b.wantsLayer = true
+            b.layer?.cornerRadius = 4
+            b.layer?.borderWidth = 1
+            b.layer?.borderColor = NSColor(calibratedRed: 1, green: 0.3, blue: 0.25, alpha: 0.7).cgColor
+            b.contentTintColor = NSColor(calibratedRed: 1, green: 0.5, blue: 0.45, alpha: 1)
+            b.translatesAutoresizingMaskIntoConstraints = false
+            v.addSubview(b)
+        }
+        v.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leftAnchor.constraint(equalTo: v.leftAnchor, constant: 4),
+            label.centerYAnchor.constraint(equalTo: v.centerYAnchor),
+            pasteBtn.rightAnchor.constraint(equalTo: v.rightAnchor, constant: -2),
+            pasteBtn.centerYAnchor.constraint(equalTo: v.centerYAnchor),
+            pasteBtn.widthAnchor.constraint(equalToConstant: 54),
+            copyBtn.rightAnchor.constraint(equalTo: pasteBtn.leftAnchor, constant: -6),
+            copyBtn.centerYAnchor.constraint(equalTo: v.centerYAnchor),
+            copyBtn.widthAnchor.constraint(equalToConstant: 44),
+            label.rightAnchor.constraint(equalTo: copyBtn.leftAnchor, constant: -8),
+            v.heightAnchor.constraint(equalToConstant: 34)
+        ])
+        return v
+    }
+
+    @objc private func clipCopy(_ sender: NSButton) {
+        let i = sender.tag
+        guard clipRows.indices.contains(i) else { return }
+        let pb = NSPasteboard.general
+        pb.clearContents(); pb.setString(clipRows[i], forType: .string)
+        lastClipCount = pb.changeCount
+        respond("COPIED — \(String(clipRows[i].prefix(40)))", .verified)
+    }
+
+    @objc private func clipPaste(_ sender: NSButton) {
+        let i = sender.tag
+        guard clipRows.indices.contains(i) else { return }
+        let pb = NSPasteboard.general
+        pb.clearContents(); pb.setString(clipRows[i], forType: .string)
+        lastClipCount = pb.changeCount
+        close()
+        previousApp?.activate(options: .activateIgnoringOtherApps)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            agentPressCombo("cmd v")
+            State.shared.set(.verified, "PASTED CLIP")
+        }
     }
 
     // MARK: state reflection
@@ -780,6 +1045,29 @@ final class LensController: NSObject, NSTextFieldDelegate {
             || low.hasPrefix("do it") || low.contains("by yourself") || low.contains("take over the cursor")
             || low.contains("drive the cursor") || low.contains("control the cursor") {
             runAgent(text); return
+        }
+
+        if low == "stop" || low == "record stop" || low.contains("stop recording") {
+            isRecording ? stopRecording() : respond("NOTHING TO STOP", .blocked)
+            return
+        }
+        if low == "macros" || low == "list macros" {
+            let names = MacroStore.list()
+            respond(names.isEmpty ? "NO MACROS SAVED — record <name>" : "MACROS — \(names.joined(separator: ", "))", .verified)
+            return
+        }
+        if low == "record" || low.hasPrefix("record ") {
+            startRecording(String(text.dropFirst(6)).trimmingCharacters(in: .whitespaces))
+            return
+        }
+        if low.hasPrefix("replay ") || low.hasPrefix("play ") {
+            let first = text.split(separator: " ").first?.count ?? 6
+            replayMacro(String(text.dropFirst(first + 1)).trimmingCharacters(in: .whitespaces))
+            return
+        }
+        if low == "clip" || low == "clips" || low.hasPrefix("clip ") || low.contains("clipboard") {
+            runClipSearch(text)
+            return
         }
 
         if low.contains("screenshot") || low.contains("screen shot") || low.contains("capture") {
@@ -1196,6 +1484,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Nexus Triangle", action: nil, keyEquivalent: "")
         let lensItem = menu.addItem(withTitle: "Command Lens  (⌃⌃ / ⌥Space / ⌃⌥Space)", action: #selector(lensOpen), keyEquivalent: "")
         lensItem.target = self
+        let closeItem = menu.addItem(withTitle: "Close Lens", action: #selector(lensClose), keyEquivalent: "")
+        closeItem.target = self
+        let pinItem = menu.addItem(withTitle: "Pin / Unpin Lens  (⌘P)", action: #selector(lensPin), keyEquivalent: "")
+        pinItem.target = self
         let triItem = menu.addItem(withTitle: "Hide Triangle", action: #selector(toggleTri), keyEquivalent: "")
         triItem.target = self
         menu.addItem(.separator())
@@ -1211,6 +1503,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func lensOpen() { lens.toggle() }
+    @objc private func lensClose() { lens.close() }
+    @objc private func lensPin() {
+        if !lens.isOpen { lens.open() }
+        lens.togglePin()
+    }
     private func pickModel() {
         guard let url = URL(string: "http://localhost:11434/api/tags") else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
@@ -1263,6 +1560,121 @@ private var agentHistory: [[String: Any]] = []
 private var agentSteps: [String] = []
 private var agentCursor: CGPoint = .zero
 @MainActor private var agentNudges = 0
+
+// MARK: - Macro (record & replay)
+
+struct MacroEvent: Codable {
+    let t: Double
+    let type: String
+    var x: Double = 0
+    var y: Double = 0
+    var keyCode: Int64 = 0
+    var flags: UInt64 = 0
+    var text: String = ""
+}
+
+struct Macro: Codable {
+    let name: String
+    let events: [MacroEvent]
+}
+
+enum MacroStore {
+    static var dir: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/macros", isDirectory: true)
+    }
+    static func safe(_ name: String) -> String {
+        name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+    }
+    static func file(_ name: String) -> URL { dir.appendingPathComponent("\(safe(name)).json") }
+    static func list() -> [String] {
+        ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "json" }
+            .map { $0.deletingPathExtension().lastPathComponent }
+            .sorted()
+    }
+    static func save(_ m: Macro) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? JSONEncoder().encode(m).write(to: file(m.name))
+    }
+    static func load(_ name: String) -> Macro? {
+        guard let d = try? Data(contentsOf: file(name)) else { return nil }
+        return try? JSONDecoder().decode(Macro.self, from: d)
+    }
+}
+
+private func macroTapCB(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent,
+                        refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    guard MacroTap.recording else { return Unmanaged.passUnretained(event) }
+    let t = Double(DispatchTime.now().uptimeNanoseconds - MacroTap.t0.uptimeNanoseconds) / 1_000_000
+    switch type {
+    case .mouseMoved:
+        let p = event.location
+        let moved = hypot(p.x - MacroTap.lastPos.x, p.y - MacroTap.lastPos.y) > 3
+        if moved || t - MacroTap.lastT > 150 {
+            MacroTap.buffer.append(MacroEvent(t: t, type: "move", x: p.x, y: p.y))
+            MacroTap.lastPos = p
+            MacroTap.lastT = t
+        }
+    case .leftMouseDown:
+        let p = event.location
+        MacroTap.buffer.append(MacroEvent(t: t, type: "md", x: p.x, y: p.y))
+    case .leftMouseUp:
+        let p = event.location
+        MacroTap.buffer.append(MacroEvent(t: t, type: "mu", x: p.x, y: p.y))
+    case .keyDown:
+        var units = [UniChar](repeating: 0, count: 8)
+        var len = 0
+        event.keyboardGetUnicodeString(maxStringLength: 8, actualStringLength: &len, unicodeString: &units)
+        let s = String(utf16CodeUnits: units, count: len)
+        let code = event.getIntegerValueField(.keyboardEventKeycode)
+        MacroTap.buffer.append(MacroEvent(t: t, type: "key", keyCode: code, flags: event.flags.rawValue, text: s))
+    default: break
+    }
+    if MacroTap.buffer.count > 4000 { MacroTap.recording = false }
+    return Unmanaged.passUnretained(event)
+}
+
+enum MacroTap {
+    static var buffer: [MacroEvent] = []
+    static var recording = false
+    static var t0 = DispatchTime.now()
+    static var tap: CFMachPort?
+    static var lastPos: CGPoint = .zero
+    static var lastT: Double = 0
+
+    static func start() -> Bool {
+        buffer = []
+        lastPos = .zero
+        lastT = 0
+        t0 = .now()
+        let mask: CGEventMask =
+            (1 << CGEventType.mouseMoved.rawValue)
+            | (1 << CGEventType.leftMouseDown.rawValue)
+            | (1 << CGEventType.leftMouseUp.rawValue)
+            | (1 << CGEventType.keyDown.rawValue)
+        let cb: CGEventTapCallBack = macroTapCB
+        guard let t = CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap,
+                                         options: .listenOnly, eventsOfInterest: mask,
+                                         callback: cb, userInfo: nil) else { return false }
+        tap = t
+        let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, t, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), src, .commonModes)
+        CGEvent.tapEnable(tap: t, enable: true)
+        recording = true
+        return true
+    }
+
+    static func stop() -> [MacroEvent] {
+        recording = false
+        if let t = tap {
+            CGEvent.tapEnable(tap: t, enable: false)
+            CFMachPortInvalidate(t)
+            tap = nil
+        }
+        return buffer
+    }
+}
 
 private let agentTools: [[String: Any]] = [
     ["type": "function", "function": [
