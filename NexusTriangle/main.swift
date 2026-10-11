@@ -1,14 +1,14 @@
-# Nexus Triangl - companion prototype
-# Red samaritan triangle
+// Nexus Triangl - companion prototype
+// Red samaritan triangle
 
 import Cocoa
 import Carbon
 import ServiceManagement
 
-# states 
+// states
 
 enum TriState: String {
-    case idle, lock, resoning, executing, verified, blocked
+    case idle, lock, reasoning, executing, verified, blocked
     var label: String {
         switch self {
         case .idle:      return "FOLLOWING POINTER · AWAITING INTENT"
@@ -30,12 +30,12 @@ final class State {
     var overlay: OverlayController?
     var lens: LensController?
     func set(_ s: TriState) { overlay?.setState(s); lens?.reflectState(s) }
-    func set(_ s: TiState, _ detail: String) { overlay?.setState(s); lens?.reflectState(s, detail) }
+    func set(_ s: TriState, _ detail: String) { overlay?.setState(s); lens?.reflectState(s, detail) }
 }
 
 // Mark:- Triangle View
 
-final lass TriangleView: NSView {
+final class TriangleView: NSView {
 
     let tri = CAShapeLayer()
     let ring = CAShapeLayer()
@@ -43,7 +43,7 @@ final lass TriangleView: NSView {
     let bracket = CAShapeLayer()
     let check = CATextLayer()
     let dots = CALayer()
-    private var dotLayers; [CAShapeLayer] = []
+    private var dotLayers: [CAShapeLayer] = []
 
     var state: TriState = .idle {
         didSet { apply(state) }
@@ -57,19 +57,20 @@ final lass TriangleView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        wantsLayer = truelayer?.backgroundColor = NSColor.clear.cgColor
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
 
         tri.path = Self.triangle(side: 20)
-        tri.fillcolor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
+        tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
         tri.shadowRadius = 9
         tri.shadowOpacity = 0.9
         tri.shadowOffset = .zero
-        tri.anchorPoint - cgPoint(x: 0.5, y: 0.5)
+        tri.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         layer?.addSublayer(tri)
 
-        bracket.strokeColor = NSColor(calibraterRed: 1, green: 0.25, blue: 0.2, alpha: 0.95).cgColor
+        bracket.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.95).cgColor
         bracket.lineWidth = 1.4
-        bracket.fillcolor = nil
+        bracket.fillColor = nil
         bracket.isHidden = true
         layer?.addSublayer(bracket)
 
@@ -265,12 +266,13 @@ final lass TriangleView: NSView {
 
 // MARK: - Overlay Controller (triangle follows cursor)
 
+@MainActor
 final class OverlayController {
 
     let panel: NSPanel
     let triView = TriangleView()
     private var timer: Timer?
-    private var pos: NSPoint = NSEvent.mouseLocation
+    private(set) var pos: NSPoint = NSEvent.mouseLocation
     private var mouse: NSPoint = NSEvent.mouseLocation
     private var angle: CGFloat = 0
 
@@ -549,6 +551,7 @@ final class LensPanel: NSPanel {
 
 // MARK: - Lens Controller
 
+@MainActor
 final class LensController: NSObject, NSTextFieldDelegate {
 
     private let panel: LensPanel
@@ -562,6 +565,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
     private let searcher = FileSearch()
     private var appCache: [(String, URL)]?
     private var pendingQuery: String = ""
+    private var followTimer: Timer?
     private(set) var isOpen = false
 
     static let width: CGFloat = 370
@@ -668,16 +672,22 @@ final class LensController: NSObject, NSTextFieldDelegate {
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         NSApp.activate(ignoringOtherApps: true)
+        startFollow()
     }
 
     func close() {
         agentAbort()
         isOpen = false
+        stopFollow()
         panel.orderOut(nil)
     }
 
+    private func anchorPoint() -> NSPoint {
+        State.shared.overlay?.pos ?? NSEvent.mouseLocation
+    }
+
     private func positionForHeight(_ h: CGFloat) -> NSPoint {
-        let m = NSEvent.mouseLocation
+        let m = anchorPoint()
         let screen = NSScreen.screens.first(where: { $0.frame.contains(m) }) ?? NSScreen.main!
         let vf = screen.visibleFrame
         let w = Self.width
@@ -694,6 +704,27 @@ final class LensController: NSObject, NSTextFieldDelegate {
         let f = panel.frame
         panel.setFrame(NSRect(origin: positionForHeight(h), size: NSSize(width: Self.width, height: h)), display: true, animate: false)
         _ = f
+    }
+
+    // MARK: follow the triangle
+
+    private func startFollow() {
+        guard followTimer == nil else { return }
+        let t = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in self?.followTick() }
+        RunLoop.main.add(t, forMode: .common)
+        followTimer = t
+    }
+
+    private func stopFollow() {
+        followTimer?.invalidate()
+        followTimer = nil
+    }
+
+    private func followTick() {
+        guard isOpen else { return }
+        if State.shared.overlay?.agentActive == true { return }
+        let o = positionForHeight(panel.frame.height)
+        if o != panel.frame.origin { panel.setFrameOrigin(o) }
     }
 
     // MARK: state reflection
@@ -1114,6 +1145,7 @@ enum LoginItem {
 
 // MARK: - App Delegate
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var overlay: OverlayController!
@@ -1298,7 +1330,7 @@ private func agentSystemPrompt() -> String {
     """
 }
 
-private func askOllama(_ done: @escaping ([String: Any]?, Error?) -> Void) {
+@MainActor private func askOllama(_ done: @escaping ([String: Any]?, Error?) -> Void) {
     guard let url = URL(string: "http://localhost:11434/api/chat") else { done(nil, nil); return }
     let body: [String: Any] = [
         "model": agentModel,
@@ -1347,7 +1379,7 @@ private let kCGKeys: [(String, CGKeyCode)] = [
 
 private func agentPostSource() -> CGEventSource? { CGEventSource(stateID: CGEventSourceStateID(rawValue: 1)!) }
 
-private func agentMoveMouse(to p: CGPoint) {
+@MainActor private func agentMoveMouse(to p: CGPoint) {
     agentCursor = p
     if agentDryRun { State.shared.overlay?.execTarget = p; return }
     let ev = CGEvent(mouseEventSource: agentPostSource(), mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)
@@ -1355,7 +1387,7 @@ private func agentMoveMouse(to p: CGPoint) {
     State.shared.overlay?.execTarget = p
 }
 
-private func agentClick(_ button: CGMouseButton, count: Int) {
+@MainActor private func agentClick(_ button: CGMouseButton, count: Int) {
     agentMoveMouse(to: agentCursor)
     if agentDryRun { return }
     let down: CGEventType, up: CGEventType
@@ -1694,7 +1726,8 @@ extension LensController {
 // MARK: - Entry
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.setActivationPolicy(.accessory)
-app.run()
+MainActor.assumeIsolated {
+    app.delegate = AppDelegate()
+    app.setActivationPolicy(.accessory)
+    app.run()
+}
