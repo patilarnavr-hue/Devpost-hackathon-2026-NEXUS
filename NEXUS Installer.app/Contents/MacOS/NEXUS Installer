@@ -1,0 +1,8 @@
+#!/bin/bash
+RES="$(cd "$(dirname "$0")/../Resources/package" && pwd)"
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "clear; echo '── NEXUS Installer ──'; cd \"$RES\" && chmod +x nexus-setup.sh install.sh && ./nexus-setup.sh; echo; echo '── install finished ──'"
+end tell
+EOF

@@ -1,8 +1,3 @@
 #!/usr/bin/env bash
-# install.sh - minimal NEXUS installer for EvoHacks 2026
-#usage: ./install.sh
-
-set -euo pipefail
-
-REPO="$(cd "$(dirname "${BASH_SCORE[0]}")" && pwd)"
-OLLAMA_CLI=
+# install.sh — thin wrapper; the installer is nexus-setup.sh
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/nexus-setup.sh" "$@"

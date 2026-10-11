@@ -1185,26 +1185,65 @@ final class LensController: NSObject, NSTextFieldDelegate {
         }
         if isRecording { respond("ALREADY RECORDING — say stop first", .blocked); return }
         if isReplaying { respond("REPLAY IN PROGRESS", .blocked); return }
-        macroName = name.isEmpty ? "macro-\(Int(Date().timeIntervalSince1970) % 100000)" : name
+        macroName = name.isEmpty ? "chore-\(Int(Date().timeIntervalSince1970) % 100000)" : name
         if !MacroTap.start() { respond("EVENT TAP DENIED — grant Accessibility", .blocked); return }
+        ChoreTap.reset()
+        ChoreTap.onStep = { [weak self] step in
+            DispatchQueue.main.async { self?.teachChip(step) }
+        }
         isRecording = true
         State.shared.overlay?.agentActive = true
-        State.shared.set(.executing, "REC \(macroName) — move & click · stop to end")
-        agentSteps = ["● REC \(macroName)", "say 'stop' to save · 'replay \(macroName)' to run"]
+        State.shared.set(.executing, "TEACH \(macroName) — do the chore · stop to end")
+        agentSteps = ["● TEACHING \(macroName)", "perform the steps you want me to learn"]
         rebuildSteps(); resize(2)
+    }
+
+    private func teachChip(_ step: ChoreStep) {
+        let glyph = step.action == "type" ? "⌨" : step.action == "key" ? "⇧" : "●"
+        let what = step.action == "type" ? "\"\(step.text)\""
+            : step.action == "key" ? step.title
+            : (step.title.isEmpty ? step.role : step.title)
+        agentSteps.append("\(glyph) \(step.app) · \(what)")
+        trimSteps()
+        rebuildSteps()
+        resize(min(agentSteps.count, 8))
     }
 
     func stopRecording() {
         guard isRecording else { respond("NOTHING TO STOP", .blocked); return }
         isRecording = false
+        ChoreTap.flushKeys()
+        ChoreTap.onStep = nil
         State.shared.overlay?.agentActive = false
         let evs = MacroTap.stop()
-        guard !evs.isEmpty else { respond("EMPTY RECORDING — nothing captured", .blocked); return }
-        let m = Macro(name: macroName, events: evs)
-        MacroStore.save(m)
-        State.shared.set(.verified, "RECORDED \(macroName) — \(evs.count) events")
-        agentSteps = ["✓ \(macroName) saved — \(evs.count) events", "replay \(macroName) to run it"]
-        rebuildSteps(); resize(2)
+        let steps = ChoreTap.steps
+        guard !steps.isEmpty else { respond("EMPTY RECORDING — nothing captured", .blocked); return }
+        MacroStore.save(Macro(name: macroName, events: evs))
+        let summary = steps.map { s -> String in
+            s.action == "type" ? "typed \"\(s.text)\""
+                : s.action == "key" ? "pressed \(s.title)"
+                : "\(s.action) \(s.title.isEmpty ? s.role : s.title) in \(s.app)"
+        }.joined(separator: ", ")
+        State.shared.set(.reasoning, "naming the chore…")
+        let msgs: [[String: String]] = [
+            ["role": "user",
+             "content": "A user performed this macOS UI chore: \(summary). In max 12 words, one sentence, imperative voice, describe what the chore does. No trailing punctuation, no quotes."]
+        ]
+        askOllama(msgs, chat: true) { [weak self] json, _ in
+            guard let self = self else { return }
+            let intent = ((json?["message"] as? [String: Any])?["content"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? summary
+            let chore = Chore(name: self.macroName, intent: intent,
+                              recordedApp: steps.first?.app ?? "", steps: steps, created: Date())
+            ChoreStore.save(chore)
+            State.shared.set(.verified, "CHORE LEARNED — \(chore.name)")
+            agentSteps = [
+                "✓ LEARNED \(chore.name) — \(steps.count) steps",
+                "“\(intent)”",
+                "replay \(chore.name) · teach \(chore.name) <better intent>"
+            ]
+            self.rebuildSteps(); self.resize(3)
+        }
     }
 
     func replayMacro(_ rawName: String) {
@@ -1238,6 +1277,97 @@ final class LensController: NSObject, NSTextFieldDelegate {
             if wasOpen { self.panel.orderFrontRegardless(); self.panel.makeKeyAndOrderFront(nil) }
             self.respond("MACRO VERIFIED — \(m.name)", .verified)
         }
+    }
+
+    func replayChore(_ rawName: String) {
+        let name = rawName.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !isRecording else { respond("RECORDING — say stop first", .blocked); return }
+        guard let c = ChoreStore.load(name) else {
+            if MacroStore.list().contains(name) { replayMacro(name); return }
+            respond("NO CHORE '\(name)' — chores to list · record <name> to teach", .blocked)
+            return
+        }
+        guard AXIsProcessTrusted() else {
+            respond("PERMISSION REQUIRED — Accessibility to replay", .blocked)
+            return
+        }
+        isReplaying = true
+        agentCancelled = false
+        State.shared.overlay?.agentActive = true
+        State.shared.set(.executing, "REPLAY \(c.name)")
+        agentSteps = ["▶ \(c.name) — \(c.intent)"]
+        rebuildSteps(); resize(1)
+        let wasOpen = isOpen
+        if wasOpen { panel.orderOut(nil) }
+        let esc = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { e in
+            if e.keyCode == 53 { agentCancelled = true }
+        }
+        var results: [String] = []
+        func finish() {
+            if let m = esc { NSEvent.removeMonitor(m) }
+            self.isReplaying = false
+            State.shared.overlay?.agentActive = false
+            State.shared.overlay?.execTarget = nil
+            if wasOpen { self.panel.orderFrontRegardless(); self.panel.makeKeyAndOrderFront(nil) }
+            let ok = results.filter { $0.hasPrefix("✓") }.count
+            let adapted = results.filter { $0.hasPrefix("~") }.count
+            let fail = results.filter { $0.hasPrefix("✖") }.count
+            agentSteps = ["▶ \(c.name) — receipts"] + results
+            if fail == 0 {
+                var tail = "✓ \(ok)/\(c.steps.count) steps"
+                if adapted > 0 { tail += " · \(adapted) adapted live" }
+                agentSteps.append("✓ CHORE VERIFIED — \(tail)")
+            } else if let idx = results.firstIndex(where: { $0.hasPrefix("✖") }) {
+                agentSteps.append("✖ CHORE FAILED at step \(idx + 1)")
+            }
+            self.rebuildSteps(); self.resize(agentSteps.count)
+            self.respond(fail == 0 ? "CHORE VERIFIED — \(c.name)" : "CHORE FAILED — see receipts",
+                         fail == 0 ? .verified : .blocked)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { State.shared.set(.idle) }
+        }
+        func runStep(_ i: Int) {
+            if agentCancelled || i >= c.steps.count { finish(); return }
+            let step = c.steps[i]
+            let n = c.steps.count
+            let what = step.action == "type" ? "\"\(step.text)\""
+                : (step.title.isEmpty ? step.role : step.title)
+            State.shared.set(.executing, "step \(i + 1)/\(n): \(step.action) \(what)")
+            if !step.app.isEmpty && !c.recordedApp.isEmpty && step.app != c.recordedApp {
+                State.shared.set(.blocked, "GATE — now acting in \(step.app) · esc cancels")
+            }
+            let outcome = performChoreStep(step)
+            let mark = outcome == "ok" ? "✓" : outcome == "adapted" ? "~" : "✖"
+            results.append("\(mark) \(step.action) \(what)")
+            State.shared.overlay?.triView.agentReact(step.action == "type" ? "type" : "click")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { runStep(i + 1) }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { runStep(0) }
+    }
+
+    func teachIntent(_ raw: String) {
+        let parts = raw.trimmingCharacters(in: .whitespaces).split(separator: " ", maxSplits: 1)
+        guard let first = parts.first else { respond("USAGE — teach <chore> <intent>", .blocked); return }
+        let name = String(first).lowercased()
+        guard var c = ChoreStore.load(name) else { respond("NO CHORE '\(name)'", .blocked); return }
+        guard parts.count > 1 else { respond("INTENT — “\(c.intent)”", .verified); return }
+        c.intent = String(parts[1])
+        ChoreStore.save(c)
+        respond("TAUGHT — \(c.name): “\(c.intent)”", .verified)
+    }
+
+    func listChores() {
+        let names = ChoreStore.list()
+        if names.isEmpty {
+            respond("NO CHORES YET — record <name> to teach one", .blocked)
+            return
+        }
+        let lines = names.compactMap { n -> String? in
+            guard let c = ChoreStore.load(n) else { return nil }
+            return "▶ \(c.name) — “\(c.intent)” (\(c.steps.count) steps)"
+        }
+        agentSteps = ["LEARNED CHORES"] + lines
+        rebuildSteps(); resize(agentSteps.count)
+        State.shared.set(.verified, "CHORES — \(names.count) saved")
     }
 
     private func playOne(_ ev: MacroEvent) {
@@ -1435,13 +1565,15 @@ final class LensController: NSObject, NSTextFieldDelegate {
     private func showHelp() {
         State.shared.set(.verified, "COMMANDS")
         agentSteps = [
-            "find <file> — search files · reveal <file> · open <file> in <app>",
-            "open <app> — launch an application · screenshot — capture region",
+            "rename <f> to <n> · move/copy <a> to <b> · trash <f>",
+            "mkdir <name> [in <path>] · new file <name> · ls [path]",
+            "cat <file> · open <folder-or-file> · run <shell cmd> — real exit code",
+            "find <file> · reveal <file> · open <app> · screenshot",
             "agent <task> — AI drives the cursor (needs Accessibility)",
-            "record <name> — capture mouse & keys · stop — save macro",
-            "replay <name> / play <name> — run saved macro · macros — list",
-            "clip / clip <query> — clipboard inbox · COPY / PASTE buttons",
-            "esc dismiss · ✕ close · ⌘P pin lens in place (stop following)"
+            "record <name> — TEACH a chore · stop — save with AI intent",
+            "replay <name> / do <name> — run learned chore · chores — list",
+            "teach <name> <intent> — rewrite what the chore means",
+            "clip / clip <query> — clipboard inbox · esc dismiss · ⌘P pin"
         ]
         rebuildSteps()
         resize(agentSteps.count)
@@ -1533,18 +1665,71 @@ final class LensController: NSObject, NSTextFieldDelegate {
             respond(names.isEmpty ? "NO MACROS SAVED — record <name>" : "MACROS — \(names.joined(separator: ", "))", .verified)
             return
         }
+        if low == "chores" || low == "chore" || low == "list chores" || low == "skills" {
+            listChores()
+            return
+        }
+        if low.hasPrefix("teach ") {
+            teachIntent(String(text.dropFirst(6)))
+            return
+        }
         if low == "record" || low.hasPrefix("record ") {
             startRecording(String(text.dropFirst(6)).trimmingCharacters(in: .whitespaces))
             return
         }
-        if low.hasPrefix("replay ") || low.hasPrefix("play ") {
+        if low.hasPrefix("replay ") || low.hasPrefix("play ") || low.hasPrefix("do ") {
             let first = text.split(separator: " ").first?.count ?? 6
-            replayMacro(String(text.dropFirst(first + 1)).trimmingCharacters(in: .whitespaces))
+            replayChore(String(text.dropFirst(first + 1)).trimmingCharacters(in: .whitespaces))
             return
         }
         if low == "clip" || low == "clips" || low.hasPrefix("clip ") || low.contains("clipboard") {
             runClipSearch(text)
             return
+        }
+
+        // — deterministic skills (instant, no model) —
+        if low == "run" || low.hasPrefix("run ") {
+            skillRun(String(text.dropFirst(3)).trimmingCharacters(in: .whitespaces)); return
+        }
+        if low.hasPrefix("rename ") {
+            skillRename(String(text.dropFirst(6))); return
+        }
+        if low == "mkdir" || low.hasPrefix("mkdir ") || low.hasPrefix("new folder ") {
+            let a = low.hasPrefix("new folder ") ? String(text.dropFirst(10)) : String(text.dropFirst(5))
+            skillMkdir(a.trimmingCharacters(in: .whitespaces)); return
+        }
+        if low.hasPrefix("move ") {
+            skillTransfer(String(text.dropFirst(4)), copy: false); return
+        }
+        if low.hasPrefix("copy ") || low.hasPrefix("duplicate ") {
+            skillTransfer(String(text.dropFirst(low.hasPrefix("copy ") ? 4 : 9)), copy: true); return
+        }
+        if low == "trash" || low.hasPrefix("trash ") || low.hasPrefix("delete ") {
+            let a = low.hasPrefix("delete ") ? String(text.dropFirst(6)) : String(text.dropFirst(5))
+            skillTrash(a.trimmingCharacters(in: .whitespaces)); return
+        }
+        if low == "ls" || low.hasPrefix("ls ") || low == "list" || low.hasPrefix("list ") || low == "dir" {
+            let first = text.split(separator: " ").first?.count ?? 2
+            skillList(String(text.dropFirst(first)).trimmingCharacters(in: .whitespaces)); return
+        }
+        if low == "cat" || low.hasPrefix("cat ") || low == "read" || low.hasPrefix("read ") {
+            let first = text.split(separator: " ").first?.count ?? 3
+            skillRead(String(text.dropFirst(first)).trimmingCharacters(in: .whitespaces)); return
+        }
+        if low == "touch" || low.hasPrefix("touch ") || low.hasPrefix("new file ") {
+            let a = low.hasPrefix("new file ") ? String(text.dropFirst(9)) : String(text.dropFirst(5))
+            skillTouch(a.trimmingCharacters(in: .whitespaces)); return
+        }
+        if low == "open" || low.hasPrefix("open ") {
+            let arg = String(text.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+            let p = resolvePath(arg)
+            if !arg.isEmpty && FileManager.default.fileExists(atPath: p) {
+                let okOpen = NSWorkspace.shared.open(URL(fileURLWithPath: p))
+                respond(okOpen ? "OPENED — \((p as NSString).lastPathComponent)" : "OPEN FAILED",
+                        okOpen ? .verified : .blocked)
+                return
+            }
+            // not a path — fall through to app-open / search
         }
 
         if low.contains("screenshot") || low.contains("screen shot") || low.contains("capture") {
@@ -1622,7 +1807,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
             return
         }
 
-        respond("MISSION ENGINE OFFLINE — prototype modes: find <file> · open <app> · reveal <file> · screenshot", .blocked)
+        respond("NO MATCH — try: help · run <cmd> · find <file> · agent <task> · record <chore>", .blocked)
     }
 
     private func openURL(_ url: URL, label: String) {
@@ -1630,6 +1815,276 @@ final class LensController: NSObject, NSTextFieldDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             if ok { self.respond("\(label)", .verified) } else { self.respond("OPEN FAILED", .blocked) }
         }
+    }
+
+    // MARK: skills (deterministic verbs — rename, folders, shell…)
+
+    private func searchRoots() -> [URL] {
+        let fm = FileManager.default
+        return [
+            fm.urls(for: .desktopDirectory, in: .userDomainMask).first!,
+            fm.homeDirectoryForCurrentUser,
+            fm.urls(for: .documentDirectory, in: .userDomainMask).first!,
+            fm.urls(for: .downloadsDirectory, in: .userDomainMask).first!,
+            fm.urls(for: .picturesDirectory, in: .userDomainMask).first!
+        ]
+    }
+
+    private func newestScreenshotAny() -> String? {
+        let fm = FileManager.default
+        var candidates: [(URL, Date)] = []
+        var roots = [desktopURL()]
+        roots.append(contentsOf: [fm.urls(for: .picturesDirectory, in: .userDomainMask).first!,
+                                  fm.urls(for: .downloadsDirectory, in: .userDomainMask).first!])
+        for root in roots {
+            let kids = ((try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
+            for u in kids {
+                let n = u.lastPathComponent.lowercased()
+                guard n.contains("screen shot") || n.contains("screenshot") || n.contains("screen capture") || n.hasPrefix("cleanshot") else { continue }
+                guard let d = (try? u.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else { continue }
+                candidates.append((u, d))
+            }
+        }
+        return candidates.max(by: { $0.1 < $1.1 })?.0.path
+    }
+
+    private func fillerClean(_ raw: String) -> String {
+        let fillers: Set<String> = [
+            "a", "an", "the", "file", "files", "folder", "folders", "named", "called",
+            "please", "that", "which", "on", "in", "my", "me", "it", "is", "new", "old",
+            "screenshot", "screen", "shot", "capture", "image", "photo", "picture", "item",
+            "desktop", "document", "documents", "download", "downloads"
+        ]
+        let kept = raw.split(whereSeparator: { $0 == " " }).map(String.init)
+            .filter { !fillers.contains($0.lowercased()) }
+        return kept.joined(separator: " ")
+    }
+
+    /// Find an EXISTING file/folder. nil if nothing matches.
+    private func existingPath(_ raw: String) -> String? {
+        var s = raw.trimmingCharacters(in: .whitespaces)
+        if (s.hasPrefix("\"") && s.hasSuffix("\"")) || (s.hasPrefix("'") && s.hasSuffix("'")) {
+            s = String(s.dropFirst().dropLast())
+        }
+        s = s.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty else { return nil }
+        let fm = FileManager.default
+
+        func exists(_ p: String) -> String? { fm.fileExists(atPath: p) ? p : nil }
+
+        // 1. absolute / tilde
+        let expanded = (s as NSString).expandingTildeInPath
+        if expanded.hasPrefix("/") { if let e = exists(expanded) { return e } }
+
+        // 2. exact + common extensions, in each root
+        let exts = ["", ".png", ".jpg", ".jpeg", ".heic", ".txt", ".pdf", ".md",
+                    ".docx", ".xlsx", ".csv", ".zip", ".swift", ".json", ".mp4", ".mov", ".numbers"]
+        for root in searchRoots() {
+            for ext in exts {
+                if let e = exists(root.appendingPathComponent(s + ext).path) { return e }
+            }
+        }
+
+        // 3. fuzzy: case-insensitive basename / prefix / contains
+        let needle = s.lowercased()
+        let needleStem = (needle as NSString).deletingPathExtension
+        var containsHits: [(String, Int)] = []
+        for root in searchRoots() {
+            let kids = (try? fm.contentsOfDirectory(atPath: root.path)) ?? []
+            for name in kids {
+                let n = name.lowercased()
+                let stem = (n as NSString).deletingPathExtension
+                if n == needle || stem == needle || stem == needleStem {
+                    return root.appendingPathComponent(name).path
+                }
+                if n.contains(needle) {
+                    containsHits.append((root.appendingPathComponent(name).path, name.count))
+                }
+            }
+        }
+        if let best = containsHits.min(by: { $0.1 < $1.1 }) { return best.0 }
+
+        // 4. natural-language cleanup ("a screenshot on desktop named gg" → "gg")
+        let cleaned = fillerClean(s)
+        if !cleaned.isEmpty && cleaned != s { return existingPath(cleaned) }
+
+        // 5. bare "screenshot" → newest screenshot anywhere
+        let low = s.lowercased()
+        if low.contains("screenshot") || low.contains("screen shot") || low.contains("latest shot") {
+            return newestScreenshotAny()
+        }
+        return nil
+    }
+
+    /// Resolve for skills: existing match (fuzzy) or best creation target.
+    private func resolvePath(_ raw: String) -> String {
+        if let e = existingPath(raw) { return e }
+        var name = fillerClean(raw)
+        if name.isEmpty { name = raw.trimmingCharacters(in: .whitespaces) }
+        let expanded = (name as NSString).expandingTildeInPath
+        if expanded.hasPrefix("/") { return expanded }
+        return desktopURL().appendingPathComponent(name).path
+    }
+
+    private func skillRun(_ cmd: String) {
+        guard !cmd.isEmpty else { respond("USAGE — run <command>", .blocked); return }
+        State.shared.set(.executing, "run · \(String(cmd.prefix(40)))")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            p.arguments = ["-c", cmd]
+            let out = Pipe(), err = Pipe()
+            p.standardOutput = out; p.standardError = err
+            var exitCode: Int32 = -1
+            do {
+                try p.run()
+                let deadline = Date().addingTimeInterval(20)
+                while p.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
+                if p.isRunning { p.terminate(); exitCode = 124 } else { exitCode = p.terminationStatus }
+                p.waitUntilExit()
+            } catch {
+                DispatchQueue.main.async { self?.respond("RUN FAILED — \(error.localizedDescription)", .blocked) }
+                return
+            }
+            let o = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            let e = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let lines = (o.isEmpty ? e : o).split(separator: "\n").prefix(8).map(String.init)
+                agentSteps = ["$ \(cmd)", "exit \(exitCode)"] + lines
+                self.rebuildSteps(); self.resize(agentSteps.count)
+                self.respond(exitCode == 0 ? "RUN OK — exit 0" : "RUN FAILED — exit \(exitCode)",
+                             exitCode == 0 ? .verified : .blocked)
+            }
+        }
+    }
+
+    private func skillRename(_ args: String) {
+        // split on " to " or " as " (natural phrasing)
+        let lower = args.lowercased()
+        var sepRange: Range<String.Index>?
+        if let r = args.range(of: " to ", options: .caseInsensitive) { sepRange = r }
+        else if let r = args.range(of: " as ", options: .caseInsensitive) { sepRange = r }
+        guard let sep = sepRange else { respond("USAGE — rename <file> to <newname>", .blocked); return }
+        let srcQuery = String(args[..<sep.lowerBound])
+        var newName = String(args[sep.upperBound...]).trimmingCharacters(in: .whitespaces)
+        if (newName.hasPrefix("\"") && newName.hasSuffix("\"")) || (newName.hasPrefix("'") && newName.hasSuffix("'")) {
+            newName = String(newName.dropFirst().dropLast())
+        }
+        guard !newName.isEmpty else { respond("USAGE — rename <file> to <newname>", .blocked); return }
+
+        guard let src = existingPath(srcQuery) else {
+            respond("NOT FOUND — tried exact, extensions, fuzzy match · \(srcQuery)", .blocked)
+            return
+        }
+        // keep the original extension unless the new name already has one
+        let srcExt = (src as NSString).pathExtension
+        if !srcExt.isEmpty && (newName as NSString).pathExtension.isEmpty {
+            newName += "." + srcExt
+        }
+        let dst = (src as NSString).deletingLastPathComponent + "/" + newName
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: src) else { respond("NOT FOUND — \(srcQuery)", .blocked); return }
+        guard src != dst else { respond("SAME NAME — nothing to do", .blocked); return }
+        guard !fm.fileExists(atPath: dst) else { respond("ALREADY EXISTS — \(newName)", .blocked); return }
+        do {
+            try fm.moveItem(atPath: src, toPath: dst)
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: dst)])
+            respond("RENAMED — \((src as NSString).lastPathComponent) → \(newName)", .verified)
+        } catch {
+            respond("RENAME FAILED — \(error.localizedDescription)", .blocked)
+        }
+    }
+
+    private func skillMkdir(_ args: String) {
+        var name = args.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { respond("USAGE — mkdir <name> [in <path>]", .blocked); return }
+        var target = desktopURL()
+        if let r = name.range(of: " in ") {
+            target = URL(fileURLWithPath: resolvePath(String(name[r.upperBound...])))
+            name = String(name[..<r.lowerBound]).trimmingCharacters(in: .whitespaces)
+        }
+        let dst = target.appendingPathComponent(name)
+        do {
+            try FileManager.default.createDirectory(at: dst, withIntermediateDirectories: false)
+            respond("FOLDER CREATED — \(name)", .verified)
+        } catch {
+            respond("MKDIR FAILED — \(error.localizedDescription)", .blocked)
+        }
+    }
+
+    private func skillTransfer(_ args: String, copy: Bool) {
+        let parts = args.components(separatedBy: " to ")
+        guard parts.count == 2 else {
+            respond("USAGE — \(copy ? "copy" : "move") <src> to <dst>", .blocked); return
+        }
+        let src = resolvePath(parts[0])
+        var dst = resolvePath(parts[1])
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: src) else { respond("NOT FOUND — \(parts[0])", .blocked); return }
+        var isDir: ObjCBool = false
+        if fm.fileExists(atPath: dst, isDirectory: &isDir), isDir.boolValue {
+            dst = dst + "/" + (src as NSString).lastPathComponent
+        }
+        do {
+            if copy { try fm.copyItem(atPath: src, toPath: dst) }
+            else { try fm.moveItem(atPath: src, toPath: dst) }
+            respond("\(copy ? "COPIED" : "MOVED") — \((src as NSString).lastPathComponent)", .verified)
+        } catch {
+            respond("\(copy ? "COPY" : "MOVE") FAILED — \(error.localizedDescription)", .blocked)
+        }
+    }
+
+    private func skillTrash(_ args: String) {
+        let trimmed = args.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { respond("USAGE — trash <file>", .blocked); return }
+        let path = resolvePath(trimmed)
+        let url = URL(fileURLWithPath: path)
+        guard FileManager.default.fileExists(atPath: path) else { respond("NOT FOUND — \(args)", .blocked); return }
+        NSWorkspace.shared.recycle([url]) { [weak self] _, error in
+            DispatchQueue.main.async {
+                if let error { self?.respond("TRASH FAILED — \(error.localizedDescription)", .blocked) }
+                else { self?.respond("TRASHED — \(url.lastPathComponent)", .verified) }
+            }
+        }
+    }
+
+    private func skillRead(_ args: String) {
+        let path = resolvePath(args)
+        guard let data = FileManager.default.contents(atPath: path),
+              let text = String(data: data, encoding: .utf8) else {
+            respond("CANNOT READ — \(args)", .blocked); return
+        }
+        let all = text.split(separator: "\n")
+        let lines = all.prefix(10).map(String.init)
+        agentSteps = ["\( (path as NSString).lastPathComponent ) — \(all.count) lines"] + lines
+        rebuildSteps(); resize(agentSteps.count)
+        respond("READ — \((path as NSString).lastPathComponent)", .verified)
+    }
+
+    private func skillList(_ args: String) {
+        let path = args.isEmpty ? desktopURL().path : resolvePath(args)
+        guard let items = try? FileManager.default.contentsOfDirectory(atPath: path) else {
+            respond("CANNOT LIST — \(path)", .blocked); return
+        }
+        let shown = items.sorted().prefix(10).map { name -> String in
+            let full = path + "/" + name
+            var isDir: ObjCBool = false
+            FileManager.default.fileExists(atPath: full, isDirectory: &isDir)
+            return (isDir.boolValue ? "📁 " : "📄 ") + name
+        }
+        agentSteps = ["\( (path as NSString).lastPathComponent ) — \(items.count) items"] + shown
+        rebuildSteps(); resize(agentSteps.count)
+        respond("LISTED — \(items.count) items", .verified)
+    }
+
+    private func skillTouch(_ args: String) {
+        guard !args.isEmpty else { respond("USAGE — touch <filename>", .blocked); return }
+        let path = resolvePath(args)
+        guard FileManager.default.createFile(atPath: path, contents: nil) else {
+            respond("TOUCH FAILED — \(args)", .blocked); return
+        }
+        respond("FILE CREATED — \((path as NSString).lastPathComponent)", .verified)
     }
 
     // MARK: apps
@@ -2125,6 +2580,7 @@ private func macroTapCB(proxy: CGEventTapProxy, type: CGEventType, event: CGEven
     case .leftMouseUp:
         let p = event.location
         MacroTap.buffer.append(MacroEvent(t: t, type: "mu", x: p.x, y: p.y))
+        ChoreTap.recordClick(at: p)
     case .keyDown:
         var units = [UniChar](repeating: 0, count: 8)
         var len = 0
@@ -2132,6 +2588,7 @@ private func macroTapCB(proxy: CGEventTapProxy, type: CGEventType, event: CGEven
         let s = String(utf16CodeUnits: units, count: len)
         let code = event.getIntegerValueField(.keyboardEventKeycode)
         MacroTap.buffer.append(MacroEvent(t: t, type: "key", keyCode: code, flags: event.flags.rawValue, text: s))
+        ChoreTap.recordKey(code: code, text: s, flags: event.flags.rawValue)
     default: break
     }
     if MacroTap.buffer.count > 4000 { MacroTap.recording = false }
@@ -2176,6 +2633,253 @@ enum MacroTap {
             tap = nil
         }
         return buffer
+    }
+}
+
+// MARK: - Chore (semantic teach & replay)
+
+struct ChoreStep: Codable {
+    var action: String      // "click" | "type" | "key"
+    var app: String
+    var role: String
+    var title: String
+    var path: String
+    var text: String
+    var x: Double
+    var y: Double
+}
+
+struct Chore: Codable {
+    var name: String
+    var intent: String
+    var recordedApp: String
+    var steps: [ChoreStep]
+    var created: Date
+}
+
+enum ChoreStore {
+    static var dir: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/chores", isDirectory: true)
+    }
+    static func safe(_ name: String) -> String {
+        name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+    }
+    static func file(_ name: String) -> URL { dir.appendingPathComponent("\(safe(name)).json") }
+    static func list() -> [String] {
+        ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "json" }
+            .map { $0.deletingPathExtension().lastPathComponent }
+            .sorted()
+    }
+    static func save(_ c: Chore) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
+        try? enc.encode(c).write(to: file(c.name))
+    }
+    static func load(_ name: String) -> Chore? {
+        guard let d = try? Data(contentsOf: file(name)) else { return nil }
+        return try? JSONDecoder().decode(Chore.self, from: d)
+    }
+}
+
+enum ChoreTap {
+    static var steps: [ChoreStep] = []
+    static var onStep: ((ChoreStep) -> Void)?
+    static var keyBuf = ""
+    static var lastFieldTitle = ""
+    static var t0 = DispatchTime.now()
+    static var lastClickKey = ""
+    static var lastClickT: Double = 0
+
+    static func reset() {
+        steps = []; keyBuf = ""; lastFieldTitle = ""; lastClickKey = ""; lastClickT = 0; t0 = .now()
+    }
+
+    private static func now() -> Double {
+        Double(DispatchTime.now().uptimeNanoseconds - t0.uptimeNanoseconds) / 1_000_000
+    }
+
+    static func recordClick(at p: CGPoint) {
+        flushKeys()
+        let sem = semanticsAt(p)
+        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        let role = sem?.role ?? ""
+        let title = sem?.title ?? ""
+        let key = "\(app)|\(role)|\(title)|\(Int(p.x))|\(Int(p.y))"
+        if key == lastClickKey, now() - lastClickT < 400 { return }
+        lastClickKey = key; lastClickT = now()
+        if role.contains("TextField") || role.contains("TextArea") || role.contains("ComboBox") {
+            lastFieldTitle = title
+        }
+        let step = ChoreStep(action: "click", app: app, role: role, title: title,
+                             path: sem?.path ?? "", text: "", x: p.x, y: p.y)
+        steps.append(step); onStep?(step)
+    }
+
+    static func recordKey(code: Int64, text: String, flags: UInt64) {
+        let mods = CGEventFlags(rawValue: flags)
+        if mods.contains(.maskCommand) || mods.contains(.maskControl) {
+            flushKeys()
+            let name: String
+            switch Int(code) {
+            case 36: name = "return"
+            case 48: name = "tab"
+            case 51: name = "delete"
+            case 53: name = "escape"
+            case 123: name = "left"
+            case 124: name = "right"
+            case 125: name = "down"
+            case 126: name = "up"
+            default: name = "key\(code)"
+            }
+            let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+            let step = ChoreStep(action: "key", app: app, role: "", title: name,
+                                 path: "", text: name, x: 0, y: 0)
+            steps.append(step); onStep?(step)
+            return
+        }
+        switch Int(code) {
+        case 36, 48, 51, 53, 117, 123, 124, 125, 126:
+            flushKeys()
+        default:
+            if !text.isEmpty { keyBuf += text }
+        }
+    }
+
+    static func flushKeys() {
+        let t = keyBuf.trimmingCharacters(in: .whitespaces)
+        keyBuf = ""
+        guard !t.isEmpty else { return }
+        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        let step = ChoreStep(action: "type", app: app, role: "AXTextField",
+                             title: lastFieldTitle, path: "", text: t, x: 0, y: 0)
+        steps.append(step); onStep?(step)
+    }
+}
+
+// MARK: - AX semantics (role/title/path of an element)
+
+struct AXSemantics {
+    let role: String
+    let title: String
+    let path: String
+    let frame: CGRect
+}
+
+func semantics(of el: AXUIElement) -> AXSemantics {
+    var roleV: AnyObject?
+    AXUIElementCopyAttributeValue(el, kAXRoleAttribute as CFString, &roleV)
+    var titleV: AnyObject?
+    AXUIElementCopyAttributeValue(el, kAXTitleAttribute as CFString, &titleV)
+    var descV: AnyObject?
+    AXUIElementCopyAttributeValue(el, kAXDescriptionAttribute as CFString, &descV)
+    let role = roleV as? String ?? "?"
+    let title = (titleV as? String).flatMap { $0.isEmpty ? nil : $0 } ?? (descV as? String) ?? ""
+    var posVal: AnyObject?, sizeVal: AnyObject?
+    AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &posVal)
+    AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sizeVal)
+    var pt = CGPoint.zero, sz = CGSize.zero
+    if let v = posVal, CFGetTypeID(v) == AXValueGetTypeID() {
+        AXValueGetValue(v as! AXValue, .cgPoint, &pt)
+    }
+    if let v = sizeVal, CFGetTypeID(v) == AXValueGetTypeID() {
+        AXValueGetValue(v as! AXValue, .cgSize, &sz)
+    }
+    var crumbs: [String] = []
+    var cur: AXUIElement? = el
+    for _ in 0..<6 {
+        guard let c = cur else { break }
+        var r: AnyObject?
+        AXUIElementCopyAttributeValue(c, kAXRoleAttribute as CFString, &r)
+        var t: AnyObject?
+        AXUIElementCopyAttributeValue(c, kAXTitleAttribute as CFString, &t)
+        let rt = r as? String ?? "?"
+        let tt = (t as? String) ?? ""
+        crumbs.append(tt.isEmpty ? rt : "\(rt)[\(tt)]")
+        var parent: AnyObject?
+        AXUIElementCopyAttributeValue(c, kAXParentAttribute as CFString, &parent)
+        cur = (parent as! AXUIElement?)
+    }
+    return AXSemantics(role: role, title: title,
+                       path: crumbs.reversed().joined(separator: "/"),
+                       frame: CGRect(x: pt.x, y: pt.y, width: sz.width, height: sz.height))
+}
+
+func semanticsAt(_ p: NSPoint) -> AXSemantics? {
+    guard AXIsProcessTrusted() else { return nil }
+    let system = AXUIElementCreateSystemWide()
+    var elRef: AXUIElement?
+    guard AXUIElementCopyElementAtPosition(system, Float(p.x), Float(p.y), &elRef) == .success,
+          let el = elRef else { return nil }
+    return semantics(of: el)
+}
+
+func resolveInFront(role: String, title: String) -> AXUIElement? {
+    guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication else { return nil }
+    let axApp = AXUIElementCreateApplication(app.processIdentifier)
+    var best: AXUIElement?
+    var bestScore = 0
+    func consider(_ el: AXUIElement) {
+        let s = semantics(of: el)
+        var sc = 0
+        if !role.isEmpty && s.role == role { sc += 2 }
+        if !title.isEmpty && s.title.lowercased().contains(title.lowercased()) { sc += 3 }
+        if sc > bestScore { bestScore = sc; best = el }
+    }
+    func walk(_ el: AXUIElement, depth: Int) {
+        guard depth <= 10 else { return }
+        consider(el)
+        var childrenV: AnyObject?
+        AXUIElementCopyAttributeValue(el, kAXChildrenAttribute as CFString, &childrenV)
+        for c in (childrenV as? [AXUIElement]) ?? [] { walk(c, depth: depth + 1) }
+    }
+    var windowsV: AnyObject?
+    AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsV)
+    for w in (windowsV as? [AXUIElement]) ?? [] { walk(w, depth: 0) }
+    var menuV: AnyObject?
+    AXUIElementCopyAttributeValue(axApp, "AXMenuBar" as CFString, &menuV)
+    if let menu = menuV { walk(menu as! AXUIElement, depth: 0) }
+    return bestScore >= 2 ? best : nil
+}
+
+@MainActor func performChoreStep(_ step: ChoreStep) -> String {
+    switch step.action {
+    case "click":
+        if let el = resolveInFront(role: step.role, title: step.title) {
+            let sem = semantics(of: el)
+            let moved = hypot(sem.frame.midX - step.x, sem.frame.midY - step.y) > 40
+            if AXUIElementPerformAction(el, kAXPressAction as CFString) == .success {
+                usleep(140_000)
+                return moved ? "adapted" : "ok"
+            }
+            let c = CGPoint(x: sem.frame.midX, y: sem.frame.midY)
+            agentMoveMouse(to: c)
+            State.shared.overlay?.execTarget = c
+            agentClick(.left, count: 1)
+            usleep(140_000)
+            return moved ? "adapted" : "ok"
+        }
+        let c = CGPoint(x: step.x, y: step.y)
+        agentMoveMouse(to: c)
+        State.shared.overlay?.execTarget = c
+        agentClick(.left, count: 1)
+        usleep(140_000)
+        return "adapted"
+    case "type":
+        if !step.title.isEmpty, let el = resolveInFront(role: "AXTextField", title: step.title) {
+            AXUIElementSetAttributeValue(el, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+            usleep(60_000)
+        }
+        agentType(step.text)
+        usleep(160_000)
+        return "ok"
+    case "key":
+        agentPressCombo(step.title)
+        usleep(120_000)
+        return "ok"
+    default:
+        return "fail"
     }
 }
 
