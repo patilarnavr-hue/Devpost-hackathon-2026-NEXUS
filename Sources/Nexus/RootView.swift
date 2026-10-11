@@ -74,7 +74,8 @@ struct ContentView: View {
         case 3: MemoryView()
         case 4: EventsView()
         case 5: PermissionsView()
-        case 6: SettingsView()
+        case 6: RoomsView()
+        case 7: SettingsView()
         default: OverviewView()
         }
     }

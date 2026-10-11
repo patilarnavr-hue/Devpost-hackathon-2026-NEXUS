@@ -56,6 +56,50 @@ final class NexusEngine: NSObject, ObservableObject {
         Task { await ollama.refreshModels() }
         // Create initial empty session
         createSession()
+        // Live tail of the Red Triangle's bridge stream
+        startBridgeTail()
+    }
+
+    // MARK: - Triangle bridge (live automation feed)
+
+    private var bridgeOffset: UInt64 = 0
+    private var bridgeTimer: Timer?
+
+    private var bridgeFile: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/bridge.jsonl")
+    }
+
+    private func startBridgeTail() {
+        // start at EOF so we only show new activity
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: bridgeFile.path),
+           let size = attrs[.size] as? UInt64 {
+            bridgeOffset = size
+        }
+        let t = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { self?.drainBridge() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        bridgeTimer = t
+    }
+
+    private func drainBridge() {
+        guard let handle = try? FileHandle(forReadingFrom: bridgeFile) else { return }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        guard size > bridgeOffset else { return }
+        try? handle.seek(toOffset: bridgeOffset)
+        guard let data = try? handle.readToEnd(), !data.isEmpty else { return }
+        bridgeOffset = size
+        guard let text = String(data: data, encoding: .utf8) else { return }
+        for line in text.split(separator: "\n") {
+            guard let obj = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                  let kind = obj["kind"] as? String,
+                  let msg = obj["text"] as? String else { continue }
+            let ts = (obj["ts"] as? Double).map(Date.init(timeIntervalSince1970:)) ?? Date()
+            let sev = kind.contains("fail") || kind == "blocked" ? "warning" : "info"
+            addEvent(ActivityEvent(type: "triangle_\(kind)", message: msg, timestamp: ts, severity: sev))
+        }
     }
 
     private func playTransition(_ t: WorldTransition) {

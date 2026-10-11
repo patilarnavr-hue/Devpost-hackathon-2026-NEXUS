@@ -174,6 +174,19 @@ cat > "$NEXUS_DST/Contents/Info.plist" <<'PLIST'
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSHumanReadableCopyright</key><string>EvoHacks 2026 — AI for Automation</string>
+    <key>NSLocalNetworkUsageDescription</key><string>NEXUS rooms use the local network to chat and collaborate — no cloud, no accounts.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_nexuscollab._tcp</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>com.nexus.room</string>
+            <key>CFBundleURLSchemes</key>
+            <array><string>nexus</string></array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST

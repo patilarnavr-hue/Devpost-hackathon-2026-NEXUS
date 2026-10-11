@@ -12,6 +12,7 @@ struct Taskbar: View {
         ("Memory", "brain"),
         ("Events", "list.bullet.rectangle"),
         ("Permissions", "lock.shield"),
+        ("Rooms", "person.3"),
         ("Settings", "gear"),
     ]
 
