@@ -64,7 +64,7 @@ final class TriangleView: NSView {
     private var dotLayers: [CAShapeLayer] = []
 
     var state: TriState = .idle {
-        didSet { apply(state) }
+        didSet { if state != oldValue { apply(state) } }
     }
     var bracketFrame: CGRect? {
         didSet { layoutBracket() }
@@ -82,11 +82,156 @@ final class TriangleView: NSView {
             tri.shadowRadius = 26
             tri.shadowOpacity = 1
             tri.fillColor = NSColor(calibratedRed: 1, green: 0.72, blue: 0.62, alpha: 1).cgColor
-            animate(tri, "transform.scale", 1.3, 1.08, dur: 0.3, timing: .init(name: .easeOut))
+            let g = CABasicAnimation(keyPath: "transform.scale")
+            g.fromValue = 1.3
+            g.toValue = 1.08
+            g.duration = 0.3
+            g.timingFunction = .init(name: .easeOut)
+            tri.add(g, forKey: "glowScale")
         } else if glowing {
             glowing = false
             tri.shadowColor = NSColor.black.cgColor
-            apply(state)
+            tri.shadowRadius = 9
+            tri.shadowOpacity = state == .blocked ? 0.2 : 0.9
+            tri.removeAnimation(forKey: "glowScale")
+            restoreFill()
+            restorePulse()
+        }
+    }
+
+    private func restoreFill() {
+        switch state {
+        case .idle:      tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
+        case .lock:      tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.2, blue: 0.16, alpha: 1).cgColor
+        case .reasoning: tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.3, blue: 0.24, alpha: 1).cgColor
+        case .executing: tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.45, blue: 0.35, alpha: 1).cgColor
+        case .verified:  tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.85, blue: 0.8, alpha: 1).cgColor
+        case .blocked:   tri.fillColor = NSColor(calibratedRed: 0.45, green: 0.08, blue: 0.08, alpha: 1).cgColor
+        }
+    }
+
+    private func restorePulse() {
+        switch state {
+        case .idle:      animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+        case .lock:      animate(tri, "transform.scale", 1.0, 1.12, dur: 0.7, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+        case .reasoning: animate(tri, "transform.scale", 0.82, 1.18, dur: 0.62, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+        case .executing: animate(tri, "transform.scale", 1.0, 1.05, dur: 1.0, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+        default:         animate(tri, "transform.scale", 1.0, 1.03, dur: 1.2, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+        }
+    }
+
+    // MARK: agent tool reactions
+
+    func agentReact(_ kind: String, dy: CGFloat = 0) {
+        switch kind {
+        case "click":
+            ring.isHidden = false
+            ring.lineDashPattern = nil
+            ring.position = center()
+            ring.path = NSBezierPath(ovalIn: NSRect(x: -12, y: -12, width: 24, height: 24)).cgPath
+            ring.opacity = 1
+            ring.removeAllAnimations()
+            tri.removeAnimation(forKey: "transform.scale")
+            let pop = CASpringAnimation(keyPath: "transform.scale")
+            pop.fromValue = 1.5
+            pop.toValue = 1.0
+            pop.damping = 13
+            pop.stiffness = 240
+            pop.mass = 0.5
+            pop.duration = 0.5
+            tri.add(pop, forKey: "agentPop")
+            let rs = CABasicAnimation(keyPath: "transform.scale")
+            rs.fromValue = 0.4
+            rs.toValue = 2.0
+            rs.duration = 0.42
+            rs.timingFunction = .init(name: .easeOut)
+            ring.add(rs, forKey: "clickRing")
+            let rf = CABasicAnimation(keyPath: "opacity")
+            rf.fromValue = 1
+            rf.toValue = 0
+            rf.duration = 0.42
+            ring.add(rf, forKey: "clickFade")
+        case "type":
+            let j = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            j.values = [0, -2.2, 2.2, -1, 0]
+            j.duration = 0.24
+            tri.add(j, forKey: "agentJitter")
+        case "scroll":
+            let s = CABasicAnimation(keyPath: "transform.translation.y")
+            s.fromValue = dy > 0 ? -5 : 5
+            s.toValue = 0
+            s.duration = 0.32
+            s.timingFunction = .init(name: .easeOut)
+            tri.add(s, forKey: "agentSlide")
+        case "scan":
+            ring.isHidden = false
+            ring.lineDashPattern = [5, 6]
+            ring.position = center()
+            ring.path = NSBezierPath(ovalIn: NSRect(x: -26, y: -26, width: 52, height: 52)).cgPath
+            ring.opacity = 0.9
+            ring.removeAllAnimations()
+            let rot = CABasicAnimation(keyPath: "transform.rotation.z")
+            rot.fromValue = 0
+            rot.toValue = Double.pi * 2
+            rot.duration = 0.7
+            ring.add(rot, forKey: "sweep")
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0.9
+            fade.toValue = 0
+            fade.duration = 0.7
+            ring.add(fade, forKey: "sweepFade")
+        case "front":
+            animate(tri, "transform.scale", 1.4, 1.0, dur: 0.45, timing: .init(name: .easeOut))
+            tri.shadowColor = NSColor(calibratedRed: 1, green: 0.6, blue: 0.3, alpha: 1).cgColor
+            tri.shadowRadius = 20
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self = self, !self.glowing else { return }
+                self.tri.shadowColor = NSColor.black.cgColor
+                self.tri.shadowRadius = 9
+            }
+        default:
+            break
+        }
+    }
+
+    // MARK: tab / mode switch pulse
+
+    func modeSwitch() {
+        let p = CAKeyframeAnimation(keyPath: "transform.scale")
+        p.values = [1.0, 1.28, 1.0, 1.18, 1.0]
+        p.keyTimes = [0, 0.25, 0.5, 0.75, 1]
+        p.duration = 0.65
+        p.timingFunction = .init(name: .easeInEaseOut)
+        tri.add(p, forKey: "modePulse")
+        let fill = CABasicAnimation(keyPath: "fillColor")
+        fill.fromValue = NSColor(calibratedRed: 1, green: 0.75, blue: 0.65, alpha: 1).cgColor
+        fill.toValue = tri.fillColor
+        fill.duration = 0.55
+        fill.timingFunction = .init(name: .easeOut)
+        tri.add(fill, forKey: "fillFlash")
+        ring.isHidden = false
+        ring.lineDashPattern = nil
+        ring.position = center()
+        ring.path = NSBezierPath(ovalIn: NSRect(x: -16, y: -16, width: 32, height: 32)).cgPath
+        ring.opacity = 1
+        ring.removeAllAnimations()
+        let rs = CABasicAnimation(keyPath: "transform.scale")
+        rs.fromValue = 0.6
+        rs.toValue = 2.4
+        rs.duration = 0.6
+        rs.timingFunction = .init(name: .easeOut)
+        ring.add(rs, forKey: "modeRing")
+        let rf = CABasicAnimation(keyPath: "opacity")
+        rf.fromValue = 0.7
+        rf.toValue = 0
+        rf.duration = 0.6
+        ring.add(rf, forKey: "modeRingFade")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            guard let self = self else { return }
+            self.ring.removeAllAnimations()
+            self.ring.opacity = 0
+            if self.state != .verified && self.state != .blocked { self.ring.isHidden = true }
+            if !self.glowing { self.restorePulse() }
         }
     }
 
@@ -253,6 +398,7 @@ final class TriangleView: NSView {
             check.isHidden = false
             layoutCheck()
             ring.isHidden = false
+            ring.lineDashPattern = nil
             layoutRing(expand: true)
             animate(ring, "transform.scale", 0.35, 2.1, dur: 0.75)
             let fade = CABasicAnimation(keyPath: "opacity")
@@ -260,6 +406,12 @@ final class TriangleView: NSView {
             fade.toValue = 0
             fade.duration = 0.75
             ring.add(fade, forKey: "fade")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                guard let self = self, self.state == .verified else { return }
+                self.ring.removeAllAnimations()
+                self.ring.opacity = 0
+                self.ring.isHidden = true
+            }
         case .blocked:
             tri.fillColor = NSColor(calibratedRed: 0.45, green: 0.08, blue: 0.08, alpha: 1).cgColor
             tri.shadowOpacity = 0.2
@@ -366,7 +518,7 @@ final class OverlayController {
         panel.hidesOnDeactivate = false
         panel.orderFrontRegardless()
         pos = NSEvent.mouseLocation
-        panel.setFrameOrigin(NSPoint(x: pos.x - 60, y: pos.y - 60))
+        panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
         State.shared.overlay = self
         setState(.idle)
     }
@@ -410,7 +562,7 @@ final class OverlayController {
         pos.x += (tx - pos.x) * k
         pos.y += (ty - pos.y) * k
         angle += (tiltAngle(dx: tx - (pos.x - (tx - (tx - pos.x)) * 0), dy: 0) - angle) * k
-        panel.setFrameOrigin(NSPoint(x: pos.x - 60, y: pos.y - 60))
+        panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
 
         // hover target acquisition (throttled) — paused while the agent drives
         if !agentActive && Date().timeIntervalSince(dwellStart) > 0.25 {
@@ -482,6 +634,70 @@ func elementAt(_ p: NSPoint) -> AXElement? {
     AXUIElementCopyAttributeValue(el, kAXRoleDescriptionAttribute as CFString, &roleV)
     let label = (titleV as? String)?.isEmpty == false ? (titleV as! String) : (roleV as? String) ?? "ELEMENT"
     return AXElement(frame: CGRect(x: pt.x, y: pt.y, width: sz.width, height: sz.height), label: label)
+}
+
+// MARK: - AX screen snapshot (agent "eyes")
+
+func screenSnapshot() -> String {
+    guard AXIsProcessTrusted() else { return "AX permission denied" }
+    let roles: Set<String> = [
+        "AXButton", "AXTextField", "AXTextArea", "AXSecureTextField", "AXSearchField",
+        "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXComboBox", "AXSlider",
+        "AXLink", "AXMenuItem", "AXMenu item", "AXCell", "AXRow", "AXColumn",
+        "AXTabGroup", "AXToolbar", "AXWindow", "AXScrollArea", "AXTable",
+        "AXDisclosureTriangle", "AXIncrementor", "AXMenuBarItem", "AXStaticText"
+    ]
+    var lines: [String] = []
+    var budget = 40
+    guard let app = NSWorkspace.shared.frontmostApplication else { return "no front app" }
+    let s = NSScreen.main?.frame.size ?? NSSize(width: 1440, height: 900)
+    lines.append("APP \(app.localizedName ?? "?") — screen \(Int(s.width))x\(Int(s.height)), origin top-left")
+    let axApp = AXUIElementCreateApplication(app.processIdentifier)
+    var windowsV: AnyObject?
+    AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsV)
+    let windows = (windowsV as? [AXUIElement]) ?? []
+
+    func walk(_ el: AXUIElement, depth: Int) {
+        guard depth <= 8, budget > 0 else { return }
+        var roleV: AnyObject?
+        AXUIElementCopyAttributeValue(el, kAXRoleAttribute as CFString, &roleV)
+        let role = roleV as? String ?? "?"
+        if roles.contains(role) {
+            var titleV: AnyObject?
+            AXUIElementCopyAttributeValue(el, kAXTitleAttribute as CFString, &titleV)
+            var descV: AnyObject?
+            AXUIElementCopyAttributeValue(el, kAXDescriptionAttribute as CFString, &descV)
+            var valV: AnyObject?
+            AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &valV)
+            var posV: AnyObject?, sizeV: AnyObject?
+            AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &posV)
+            AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sizeV)
+            var pt = CGPoint.zero, sz = CGSize.zero
+            if let v = posV, CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgPoint, &pt) }
+            if let v = sizeV, CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgSize, &sz) }
+            if sz.width >= 6, sz.height >= 6, pt.x > -4000, pt.y > -4000 {
+                var label = (titleV as? String) ?? (descV as? String) ?? ""
+                if label.isEmpty, let v = valV as? String { label = v }
+                label = String(label.prefix(36)).replacingOccurrences(of: "\n", with: " ")
+                let short = role.replacingOccurrences(of: "AX", with: "").lowercased()
+                lines.append("\(short) \"\(label)\" @(\(Int(pt.x)),\(Int(pt.y)) \(Int(sz.width))x\(Int(sz.height)))")
+                budget -= 1
+            }
+        }
+        var childrenV: AnyObject?
+        AXUIElementCopyAttributeValue(el, kAXChildrenAttribute as CFString, &childrenV)
+        if let children = childrenV as? [AXUIElement] {
+            for c in children {
+                if budget > 0 { walk(c, depth: depth + 1) }
+            }
+        }
+    }
+    for w in windows {
+        walk(w, depth: 0)
+        if budget <= 0 { break }
+    }
+    if lines.count == 1 { lines.append("no interactive elements found — try front(app) to focus the right app") }
+    return lines.joined(separator: "\n")
 }
 
 // MARK: - File Search (Spotlight)
@@ -775,6 +991,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         NSApp.activate(ignoringOtherApps: true)
         startFollow()
         startKeyMonitor()
+        State.shared.overlay?.triView.modeSwitch()
         if clipper == nil {
             loadClips()
             clipper = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in self?.pollClips() }
@@ -790,6 +1007,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         stopFollow()
         stopKeyMonitor()
         panel.orderOut(nil)
+        State.shared.overlay?.triView.modeSwitch()
     }
 
     @objc private func doClose() { close() }
@@ -1138,8 +1356,10 @@ final class LensController: NSObject, NSTextFieldDelegate {
     // MARK: quick chat
 
     func openChat() {
+        let wasOpen = isOpen
         if !isOpen { open() }
         chatMode = true
+        if wasOpen { State.shared.overlay?.triView.modeSwitch() }
         subLabel.stringValue = "CHAT"
         field.stringValue = ""
         chatHistory = [["role": "system",
@@ -1661,13 +1881,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let login = menu.addItem(withTitle: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
         login.target = self
         refreshLoginState(login)
-        let axItem = menu.addItem(withTitle: "Grant Accessibility…", action: #selector(grantAX), keyEquivalent: "")
+        let axItem = menu.addItem(withTitle: AXIsProcessTrusted() ? "Accessibility ✓" : "Grant Accessibility… (agent needs it)", action: #selector(grantAX), keyEquivalent: "")
         axItem.target = self
         menu.addItem(.separator())
         let quit = menu.addItem(withTitle: "Quit Triangle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = self
         statusItem.menu = menu
+        axWasTrusted = AXIsProcessTrusted()
+        refreshAXIndicator()
+        axPoll = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in self?.refreshAXIndicator() }
+        RunLoop.main.add(axPoll, forMode: .common)
     }
+
+    private func refreshAXIndicator() {
+        guard let button = statusItem?.button else { return }
+        let trusted = AXIsProcessTrusted()
+        button.title = trusted ? "" : "⚠ "
+        button.contentTintColor = trusted ? nil : .systemOrange
+        if trusted, !axWasTrusted {
+            axWasTrusted = true
+            installGlobalMonitor()
+            lens.respond("ACCESSIBILITY GRANTED — agent ready", .verified)
+        }
+        statusItem.menu?.items.first(where: { $0.title.hasPrefix("Grant Accessibility") || $0.title.hasPrefix("Accessibility") })?
+            .title = trusted ? "Accessibility ✓" : "Grant Accessibility… (agent needs it)"
+    }
+    private var axWasTrusted = false
+    private var axPoll: Timer!
 
     @objc private func lensOpen() { lens.toggle() }
     @objc private func lensClose() { lens.close() }
@@ -1884,8 +2124,20 @@ private let agentTools: [[String: Any]] = [
     ]],
     ["type": "function", "function": [
         "name": "look",
-        "description": "Inspect the UI element under the current AI cursor. Returns role/title or 'unknown element'.",
+        "description": "Inspect the UI element under the current AI cursor. Returns role, title and frame.",
         "parameters": ["type": "object", "properties": [:], "required": []]
+    ]],
+    ["type": "function", "function": [
+        "name": "screen",
+        "description": "List the front app's interactive elements with screen coordinates. Call first to find what to click.",
+        "parameters": ["type": "object", "properties": [:], "required": []]
+    ]],
+    ["type": "function", "function": [
+        "name": "front",
+        "description": "Bring an app to the foreground so you can interact with it.",
+        "parameters": ["type": "object",
+                       "properties": ["app": ["type": "string"]],
+                       "required": ["app"]]
     ]],
     ["type": "function", "function": [
         "name": "done",
@@ -1902,10 +2154,14 @@ private func agentSystemPrompt() -> String {
     You are NEXUS, a red-triangle macOS agent. You control the computer cursor directly through tools.
     Screen: \(Int(s.width)) x \(Int(s.height)), origin top-left.
 
+    Workflow:
+    1. screen() lists the front app's interactive elements with coordinates — call it first.
+    2. Pick the target, move(x,y) to its CENTER, look() to verify, then click().
+    3. Use front(app) to focus an app before clicking inside it. find(query) searches files.
+    4. Prefer keyboard shortcuts (key tool) over mouse hunting when one exists.
+
     Rules:
     - Call exactly ONE tool at a time. After each call you receive the result.
-    - The cursor starts at screen center. Use look() when uncertain what is under the cursor.
-    - Prefer keyboard shortcuts over mouse hunting when a shortcut exists.
     - Never ask questions. Act. If blocked after 3 attempts, call done() describing the failure honestly.
     - Call done(summary) when finished. Keep summaries under 80 characters.
     """
@@ -1961,10 +2217,18 @@ private let kCGKeys: [(String, CGKeyCode)] = [
 private func agentPostSource() -> CGEventSource? { CGEventSource(stateID: CGEventSourceStateID(rawValue: 1)!) }
 
 @MainActor private func agentMoveMouse(to p: CGPoint) {
+    let from = agentCursor
     agentCursor = p
     if agentDryRun { State.shared.overlay?.execTarget = p; return }
-    let ev = CGEvent(mouseEventSource: agentPostSource(), mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)
-    ev?.post(tap: .cghidEventTap)
+    let steps = 10
+    for i in 1...steps {
+        let t = CGFloat(i) / CGFloat(steps)
+        let e = t * t * (3 - 2 * t)
+        let pt = CGPoint(x: from.x + (p.x - from.x) * e, y: from.y + (p.y - from.y) * e)
+        let ev = CGEvent(mouseEventSource: agentPostSource(), mouseType: .mouseMoved, mouseCursorPosition: pt, mouseButton: .left)
+        ev?.post(tap: .cghidEventTap)
+        if i < steps { usleep(14000) }
+    }
     State.shared.overlay?.execTarget = p
 }
 
@@ -1992,17 +2256,17 @@ private func agentPostSource() -> CGEventSource? { CGEventSource(stateID: CGEven
 private func agentType(_ text: String) {
     if agentDryRun { return }
     let units = Array(text.utf16)
-    for (i, _) in units.enumerated() {
+    for i in 0..<units.count {
         let src = agentPostSource()
         for kd: Bool in [true, false] {
             if let e = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: kd) {
                 units.withUnsafeBufferPointer { buf in
-                    e.keyboardSetUnicodeString(stringLength: units.count - i, unicodeString: buf.baseAddress!.advanced(by: i))
+                    e.keyboardSetUnicodeString(stringLength: 1, unicodeString: buf.baseAddress!.advanced(by: i))
                 }
                 e.post(tap: .cghidEventTap)
             }
         }
-        usleep(15000)
+        usleep(12000)
     }
 }
 
@@ -2061,7 +2325,15 @@ extension LensController {
 
     func runAgent(_ task: String) {
         guard AXIsProcessTrusted() || agentDryRun else {
-            respond("PERMISSION REQUIRED — activate Accessibility (menu bar ▸ Grant Accessibility…)", .blocked)
+            respond("PERMISSION REQUIRED — agent cannot drive the cursor", .blocked)
+            agentSteps = [
+                "⚠ agent needs Accessibility permission",
+                "1 ▸ menu bar ▸ ▲ icon ▸ Grant Accessibility…",
+                "2 ▸ System Settings ▸ Privacy▸ Accessibility ▸ enable NexusTriangle",
+                "3 ▸ re-run: agent \(String(task.prefix(40)))"
+            ]
+            rebuildSteps()
+            resize(agentSteps.count)
             return
         }
         if agentBusy {
@@ -2079,11 +2351,25 @@ extension LensController {
         State.shared.set(.reasoning, "agent engaging · \(agentModel)")
         rebuildSteps()
         resize(agentSteps.count)
+
+        var preOpenDelay: TimeInterval = 0
+        let lowTask = task.lowercased()
+        if lowTask.contains("open") || lowTask.contains("launch") || lowTask.hasPrefix("use ") {
+            if let (name, url) = matchApp(lowTask) {
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                agentSteps.append("pre-open \(name)")
+                trimSteps()
+                rebuildSteps()
+                preOpenDelay = 0.8
+            }
+        }
         agentHistory = [
             ["role": "system", "content": agentSystemPrompt()],
             ["role": "user", "content": task]
         ]
-        agentTurn()
+        DispatchQueue.main.asyncAfter(deadline: .now() + preOpenDelay) { [weak self] in
+            self?.agentTurn()
+        }
     }
 
     private func agentTurn() {
@@ -2126,7 +2412,7 @@ extension LensController {
                     }
                     if agentNudges < 2 {
                         agentNudges += 1
-                        agentHistory.append(["role": "system", "content": "Call exactly one tool from the provided list. Never answer with plain text. Tools: move, click, type_text, key, scroll, look, done."])
+                        agentHistory.append(["role": "system", "content": "Call exactly one tool from the provided list. Never answer with plain text. Tools: screen, front, move, click, type_text, key, scroll, look, find, done."])
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.agentTurn() }
                         return
                     }
@@ -2142,28 +2428,41 @@ extension LensController {
 
     private func agentExecute(_ tool: String, _ args: [String: Any]) {
         let result: String
+        var settle = 0.45
+        var reaction = ""
+        var reactionDy: CGFloat = 0
         switch tool {
         case "move":
             let x = Self.num(args["x"]), y = Self.num(args["y"])
             agentMoveMouse(to: CGPoint(x: x, y: y))
             result = "cursor → \(Int(x)),\(Int(y))"
+            settle = 0.15
         case "click":
             let button: CGMouseButton = (args["button"] as? String) == "right" ? .right : .left
             let count = Self.int(args["count"], 1)
             agentClick(button, count: count)
+            reaction = "click"
             result = "clicked \(button == .right ? "right" : "left") x\(count) at \(Int(agentCursor.x)),\(Int(agentCursor.y))"
+            settle = 0.7
         case "type_text":
             let text = args["text"] as? String ?? ""
             agentType(text)
+            reaction = "type"
             result = "typed \(text.count) chars"
+            settle = 0.4
         case "key":
             let combo = args["combo"] as? String ?? ""
             agentPressCombo(combo)
+            reaction = "type"
             result = "key '\(combo)'"
+            settle = 0.5
         case "scroll":
             let dx = Self.int(args["dx"], 0), dy = Self.int(args["dy"], -300)
             agentScroll(dx: dx, dy: dy)
+            reaction = "scroll"
+            reactionDy = CGFloat(dy)
             result = "scroll \(dx),\(dy)"
+            settle = 0.5
         case "look":
             var elRef: AXUIElement?
             let system = AXUIElementCreateSystemWide()
@@ -2173,10 +2472,31 @@ extension LensController {
                 AXUIElementCopyAttributeValue(el, kAXTitleAttribute as CFString, &t)
                 var r: AnyObject?
                 AXUIElementCopyAttributeValue(el, kAXRoleDescriptionAttribute as CFString, &r)
-                result = "element: \(r as? String ?? "?") '\(t as? String ?? "")'"
+                var posV: AnyObject?, sizeV: AnyObject?
+                AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &posV)
+                AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sizeV)
+                var pt = CGPoint.zero, sz = CGSize.zero
+                if let v = posV, CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgPoint, &pt) }
+                if let v = sizeV, CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgSize, &sz) }
+                result = "\(r as? String ?? "element") '\(t as? String ?? "")' at (\(Int(pt.x)),\(Int(pt.y)) \(Int(sz.width))x\(Int(sz.height)))"
             } else {
                 result = "unknown element"
             }
+            settle = 0.3
+        case "screen":
+            reaction = "scan"
+            result = screenSnapshot()
+            settle = 0.8
+        case "front":
+            let app = (args["app"] as? String) ?? ""
+            if let (name, url) = matchApp("open \(app)") {
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                reaction = "front"
+                result = "\(name) brought to front"
+            } else {
+                result = "no app matching '\(app)'"
+            }
+            settle = 0.7
         case "done":
             let summary = args["summary"] as? String ?? "complete"
             self.agentFinish(summary)
@@ -2189,6 +2509,7 @@ extension LensController {
                 if hit == nil, !args.isEmpty { hit = matchApp(String(describing: args)) }
                 if let (n, url) = hit {
                     NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                    reaction = "front"
                     result = "sent launch to \(n)"
                 } else {
                     result = "no app matching '\(app)'"
@@ -2209,15 +2530,18 @@ extension LensController {
                 }
                 return
             } else {
-                result = "unknown tool '\(tool)' — valid: move, click, type_text, key, scroll, look, done"
+                result = "unknown tool '\(tool)' — valid: move, click, type_text, key, scroll, look, screen, front, done"
             }
         }
         State.shared.set(.executing, tool)
-        agentSteps.append("\(tool) → \(result)")
+        if !reaction.isEmpty {
+            State.shared.overlay?.triView.agentReact(reaction, dy: reactionDy)
+        }
+        agentSteps.append("\(tool) → \(String(result.prefix(140)).replacingOccurrences(of: "\n", with: " · "))")
         trimSteps()
         rebuildSteps()
         agentHistory.append(["role": "tool", "content": result])
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + settle) { [weak self] in
             self?.agentTurn()
         }
     }
