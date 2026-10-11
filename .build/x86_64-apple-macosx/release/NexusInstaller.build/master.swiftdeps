@@ -1,0 +1,9 @@
+version: "Apple Swift version 6.0.3 (swiftlang-6.0.3.1.10 clang-1600.0.30.1)"
+options: "2045dfd72302d778d281e70c08b14fb31b09ce25ee42d5b67ec0b6d117585fd9"
+build_start_time: [1791713768, 217978000]
+build_end_time: [1791713829, 744183000]
+inputs:
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift": [1791713415, 577438322]
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift": [1791713432, 24789313]
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift": [1791713447, 29696971]
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift": [1791713459, 973671443]

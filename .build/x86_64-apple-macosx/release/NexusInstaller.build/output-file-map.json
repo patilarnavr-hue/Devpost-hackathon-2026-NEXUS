@@ -1,0 +1,27 @@
+{
+  "": {
+    "dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/NexusInstaller.d",
+    "object": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/NexusInstaller.o",
+    "swift-dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/master.swiftdeps"
+  },
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift": {
+    "object": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine.swift.o",
+    "swiftmodule": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine~partial.swiftmodule",
+    "swift-dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine.swiftdeps"
+  },
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift": {
+    "object": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp.swift.o",
+    "swiftmodule": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp.swiftdeps"
+  },
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift": {
+    "object": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes.swift.o",
+    "swiftmodule": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes~partial.swiftmodule",
+    "swift-dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes.swiftdeps"
+  },
+  "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift": {
+    "object": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome.swift.o",
+    "swiftmodule": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome~partial.swiftmodule",
+    "swift-dependencies": "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome.swiftdeps"
+  }
+}

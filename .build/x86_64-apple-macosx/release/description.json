@@ -1,0 +1,918 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.Nexus-x86_64-apple-macosx14.0-release.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/sources",
+      "importPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/AppLifecycle.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/BootAnimationView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatTheme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CloseAnimationView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CoreCanvas.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/DashboardView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EdgeLines.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EventsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Executor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/IntentClassifier.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NEXUSApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusIdentity.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OllamaService.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OverviewView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Palette.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/PermissionsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/RootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/SettingsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/TalkView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Taskbar.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Verifier.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorkflowsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorldTransitionView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "Nexus",
+      "moduleOutputPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules/Nexus.swiftmodule",
+      "objects" : [
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/AppLifecycle.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/BootAnimationView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatStore.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatTheme.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CloseAnimationView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CoreCanvas.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/DashboardView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EdgeLines.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EventsView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Executor.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/IntentClassifier.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryStore.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Models.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NEXUSApp.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusEngine.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusIdentity.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OllamaService.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OverviewView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Palette.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/PermissionsView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/RootView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/SettingsView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/TalkView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Taskbar.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Verifier.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorkflowsView.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorldTransitionView.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-apple-macosx14.0",
+        "-O",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "Nexus_main",
+        "-swift-version",
+        "6",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "the_real_deal"
+      ],
+      "outputFileMapPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/AppLifecycle.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/BootAnimationView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatTheme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CloseAnimationView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CoreCanvas.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/DashboardView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EdgeLines.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EventsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Executor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/IntentClassifier.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NEXUSApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusIdentity.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OllamaService.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OverviewView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Palette.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/PermissionsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/RootView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/SettingsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/TalkView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Taskbar.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Verifier.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorkflowsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorldTransitionView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules/Nexus.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/AppLifecycle.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/BootAnimationView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatStore.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatTheme.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CloseAnimationView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CoreCanvas.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/DashboardView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EdgeLines.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EventsView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Executor.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/IntentClassifier.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryStore.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Models.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NEXUSApp.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusEngine.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusIdentity.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OllamaService.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OverviewView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Palette.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/PermissionsView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/RootView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/SettingsView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/TalkView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Taskbar.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Verifier.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorkflowsView.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorldTransitionView.swift"
+      ],
+      "tempsPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build",
+      "wholeModuleOptimization" : true
+    },
+    "C.NexusInstaller-x86_64-apple-macosx14.0-release.module" : {
+      "executable" : "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "fileList" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/sources",
+      "importPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "NexusInstaller",
+      "moduleOutputPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules/NexusInstaller.swiftmodule",
+      "objects" : [
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes.swift.o",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-apple-macosx14.0",
+        "-O",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "NexusInstaller_main",
+        "-swift-version",
+        "6",
+        "-F",
+        "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+        "-sdk",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "the_real_deal"
+      ],
+      "outputFileMapPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules/NexusInstaller.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift",
+        "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift"
+      ],
+      "tempsPath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build",
+      "wholeModuleOptimization" : true
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "Nexus" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "Nexus",
+      "-package-name",
+      "the_real_deal",
+      "-whole-module-optimization",
+      "-num-threads",
+      "8",
+      "-c",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/AppLifecycle.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/BootAnimationView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatStore.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatTheme.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CloseAnimationView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CoreCanvas.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/DashboardView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EdgeLines.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EventsView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Executor.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/IntentClassifier.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryStore.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Models.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NEXUSApp.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusEngine.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusIdentity.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OllamaService.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OverviewView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Palette.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/PermissionsView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/RootView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/SettingsView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/TalkView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Taskbar.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Verifier.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorkflowsView.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorldTransitionView.swift",
+      "-I",
+      "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules",
+      "-target",
+      "x86_64-apple-macosx14.0",
+      "-O",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "Nexus_main",
+      "-swift-version",
+      "6",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "the_real_deal",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ],
+    "NexusInstaller" : [
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc",
+      "-module-name",
+      "NexusInstaller",
+      "-package-name",
+      "the_real_deal",
+      "-whole-module-optimization",
+      "-num-threads",
+      "8",
+      "-c",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift",
+      "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift",
+      "-I",
+      "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Modules",
+      "-target",
+      "x86_64-apple-macosx14.0",
+      "-O",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "NexusInstaller_main",
+      "-swift-version",
+      "6",
+      "-F",
+      "/Library/Developer/CommandLineTools/Library/Developer/Frameworks",
+      "-sdk",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "the_real_deal",
+      "-driver-use-frontend-path",
+      "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "Nexus" : [
+
+    ],
+    "NexusInstaller" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "writeCommands" : {
+    "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/AppLifecycle.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/BootAnimationView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/ChatTheme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CloseAnimationView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/CoreCanvas.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/DashboardView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EdgeLines.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/EventsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Executor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/IntentClassifier.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/MemoryView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NEXUSApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/NexusIdentity.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OllamaService.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/OverviewView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Palette.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/PermissionsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/RootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/SettingsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/TalkView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Taskbar.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/Verifier.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorkflowsView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/Nexus/WorldTransitionView.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/sources"
+    },
+    "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/AppLifecycle.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/BootAnimationView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/ChatTheme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CloseAnimationView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/CoreCanvas.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/DashboardView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EdgeLines.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/EventsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Executor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/IntentClassifier.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/MemoryView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NEXUSApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/NexusIdentity.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OllamaService.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/OverviewView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Palette.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/PermissionsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/RootView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/SettingsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/TalkView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Taskbar.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/Verifier.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorkflowsView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.build/WorldTransitionView.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/Nexus.product/Objects.LinkFileList"
+    },
+    "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/InstallerPanes.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/Sources/NexusInstaller/PaneChrome.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/sources"
+    },
+    "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/InstallerPanes.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.build/PaneChrome.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/NexusInstaller.product/Objects.LinkFileList"
+    },
+    "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Library/Developer/CommandLineTools/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/adminsvintage_law/Desktop/The real deal/.build/x86_64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"
+    }
+  }
+}
