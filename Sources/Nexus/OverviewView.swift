@@ -430,13 +430,13 @@ struct OverviewView: View {
             .onPreferenceChange(ScrollOffsetKey.self) { value in
                 Task { @MainActor in pinnedToBottom = value > -24 }
             }
-            .onChange(of: chat.messages.count) { _ in
+            .onChange(of: chat.messages.count) {
                 guard pinnedToBottom else { return }
                 withAnimation(.easeOut(duration: 0.18)) {
                     if let last = chat.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
             }
-            .onChange(of: chat.isThinking) { _ in
+            .onChange(of: chat.isThinking) {
                 guard pinnedToBottom else { return }
                 withAnimation(.easeOut(duration: 0.18)) { proxy.scrollTo(thinkingID, anchor: .bottom) }
             }

@@ -46,7 +46,7 @@ final class OllamaService: ObservableObject {
             return "Ollama not reachable — run ./install.sh and ensure a model is pulled."
         }
 
-        var payload: [String: Any] = [
+        let payload: [String: Any] = [
             "model": selectedModel,
             "stream": false,
             "temperature": temperature,

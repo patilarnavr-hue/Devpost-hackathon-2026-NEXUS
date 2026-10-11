@@ -56,24 +56,34 @@ final class State {
 final class TriangleView: NSView {
 
     let tri = CAShapeLayer()
+    let core = CAShapeLayer()
+    let aura = CAShapeLayer()
     let ring = CAShapeLayer()
     let traj = CAShapeLayer()
+    let tether = CAShapeLayer()
+    let shell = CAShapeLayer()
     let bracket = CAShapeLayer()
     let check = CATextLayer()
+    let alertMark = CATextLayer()
     let dots = CALayer()
     private var dotLayers: [CAShapeLayer] = []
+    private var nodeLayers: [CAShapeLayer] = []
+    private var fidgetWork: DispatchWorkItem?
 
     var state: TriState = .idle {
         didSet { if state != oldValue { apply(state) } }
     }
     var bracketFrame: CGRect? {
-        didSet { layoutBracket() }
+        didSet {
+            if bracketFrame != oldValue { layoutBracket(); pulseBracketIn(); layoutTether() }
+        }
     }
     var trajEnd: CGPoint? {
         didSet { layoutTraj() }
     }
 
     private var glowing = false
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     func setGlow(_ on: Bool) {
         if on {
@@ -111,6 +121,7 @@ final class TriangleView: NSView {
     }
 
     private func restorePulse() {
+        guard !reduceMotion else { return }
         switch state {
         case .idle:      animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
         case .lock:      animate(tri, "transform.scale", 1.0, 1.12, dur: 0.7, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
@@ -245,6 +256,10 @@ final class TriangleView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         tri.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        core.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        shell.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        aura.opacity = 0
+        aura.removeAnimation(forKey: "breath")
         CATransaction.commit()
         tri.removeAnimation(forKey: "transform.scale")
         let s = CASpringAnimation(keyPath: "transform.scale")
@@ -255,6 +270,9 @@ final class TriangleView: NSView {
         s.mass = 0.5
         s.duration = 0.5
         tri.add(s, forKey: "land")
+        let cs = s.copy() as? CASpringAnimation ?? s
+        core.add(cs, forKey: "land")
+        shell.add(cs.copy() as? CASpringAnimation ?? cs, forKey: "land")
         let r = CASpringAnimation(keyPath: "transform.rotation.z")
         r.fromValue = -0.4
         r.toValue = 0
@@ -269,9 +287,13 @@ final class TriangleView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         tri.transform = CATransform3DIdentity
+        core.transform = CATransform3DIdentity
+        shell.transform = CATransform3DIdentity
         CATransaction.commit()
         tri.removeAnimation(forKey: "land")
         tri.removeAnimation(forKey: "landSpin")
+        core.removeAnimation(forKey: "land")
+        shell.removeAnimation(forKey: "land")
         let s = CASpringAnimation(keyPath: "transform.scale")
         s.fromValue = 0.62
         s.toValue = 1.0
@@ -280,12 +302,29 @@ final class TriangleView: NSView {
         s.mass = 0.55
         s.duration = 0.55
         tri.add(s, forKey: "takeoff")
+        let cs = s.copy() as? CASpringAnimation ?? s
+        core.add(cs, forKey: "takeoff")
+        shell.add(cs.copy() as? CASpringAnimation ?? cs, forKey: "takeoff")
+        if state == .idle || state == .lock { startAuraBreath(); aura.opacity = 1 }
     }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+
+        aura.path = NSBezierPath(ovalIn: NSRect(x: -28, y: -28, width: 56, height: 56)).cgPath
+        aura.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.28).cgColor
+        aura.lineWidth = 0.8
+        aura.fillColor = nil
+        layer?.addSublayer(aura)
+
+        tether.strokeColor = NSColor(calibratedRed: 1, green: 0.35, blue: 0.3, alpha: 0.55).cgColor
+        tether.lineWidth = 0.9
+        tether.lineDashPattern = [3, 4]
+        tether.fillColor = nil
+        tether.isHidden = true
+        layer?.addSublayer(tether)
 
         tri.path = Self.triangle(side: 20)
         tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
@@ -294,6 +333,35 @@ final class TriangleView: NSView {
         tri.shadowOffset = .zero
         tri.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         layer?.addSublayer(tri)
+
+        // gyroscopic shell — wireframe triangle riding counter to the body
+        shell.path = Self.triangle(side: 30)
+        shell.strokeColor = NSColor(calibratedRed: 1, green: 0.4, blue: 0.32, alpha: 0.55).cgColor
+        shell.lineWidth = 0.9
+        shell.lineDashPattern = [4, 3]
+        shell.fillColor = nil
+        shell.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        shell.opacity = 0.0
+        layer?.addSublayer(shell)
+
+        // vertex nodes — one per corner of the shell, pulse in a wave
+        for p in Self.trianglePoints(side: 30) {
+            let n = CAShapeLayer()
+            n.path = NSBezierPath(ovalIn: NSRect(x: -1.7, y: -1.7, width: 3.4, height: 3.4)).cgPath
+            n.fillColor = NSColor(calibratedRed: 1, green: 0.75, blue: 0.68, alpha: 1).cgColor
+            n.shadowColor = NSColor(calibratedRed: 1, green: 0.4, blue: 0.32, alpha: 1).cgColor
+            n.shadowRadius = 3
+            n.shadowOpacity = 0.9
+            n.position = p
+            shell.addSublayer(n)
+            nodeLayers.append(n)
+        }
+
+        core.path = Self.triangle(side: 8)
+        core.fillColor = NSColor(calibratedRed: 1, green: 0.88, blue: 0.82, alpha: 0.95).cgColor
+        core.opacity = 0.0
+        core.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        layer?.addSublayer(core)
 
         bracket.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.95).cgColor
         bracket.lineWidth = 1.4
@@ -322,6 +390,15 @@ final class TriangleView: NSView {
         check.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
         check.isHidden = true
         layer?.addSublayer(check)
+
+        alertMark.string = "!"
+        alertMark.fontSize = 15
+        alertMark.font = NSFont.monospacedSystemFont(ofSize: 15, weight: .black)
+        alertMark.foregroundColor = NSColor(calibratedRed: 1, green: 0.55, blue: 0.5, alpha: 1).cgColor
+        alertMark.alignmentMode = .center
+        alertMark.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        alertMark.isHidden = true
+        layer?.addSublayer(alertMark)
 
         dots.isHidden = true
         layer?.addSublayer(dots)
@@ -352,10 +429,57 @@ final class TriangleView: NSView {
         return p.cgPath
     }
 
+    static func trianglePoints(side: CGFloat) -> [NSPoint] {
+        let h = side * 0.866
+        return [NSPoint(x: 0, y: h * 0.62),
+                NSPoint(x: -side / 2, y: -h * 0.38),
+                NSPoint(x: side / 2, y: -h * 0.38)]
+    }
+
+    // MARK: — shell (gyroscope) + vertex nodes
+
+    private func startShellSpin(duration: CFTimeInterval) {
+        guard !reduceMotion else { return }
+        shell.removeAnimation(forKey: "spin")
+        let s = CABasicAnimation(keyPath: "transform.rotation.z")
+        s.fromValue = -0.4
+        s.toValue = -0.4 + Double.pi * 2
+        s.duration = duration
+        s.repeatCount = .greatestFiniteMagnitude
+        s.timingFunction = CAMediaTimingFunction(name: .linear)
+        shell.add(s, forKey: "spin")
+    }
+
+    private func startNodeWave() {
+        guard !reduceMotion else {
+            for n in nodeLayers { n.opacity = 0.7 }
+            return
+        }
+        for (i, n) in nodeLayers.enumerated() {
+            n.removeAnimation(forKey: "wave")
+            let w = CAKeyframeAnimation(keyPath: "opacity")
+            w.values = [0.25, 1.0, 0.25]
+            w.keyTimes = [0, 0.35, 1]
+            w.duration = 2.4
+            w.beginTime = CACurrentMediaTime() + Double(i) * 0.35
+            w.repeatCount = .greatestFiniteMagnitude
+            w.timingFunction = .init(name: .easeInEaseOut)
+            n.add(w, forKey: "wave")
+        }
+    }
+
+    private func stopShell() {
+        shell.removeAnimation(forKey: "spin")
+        for n in nodeLayers { n.removeAnimation(forKey: "wave"); n.opacity = 0.3 }
+    }
+
     override func layout() {
         super.layout()
         tri.position = NSPoint(x: bounds.midX, y: bounds.midY)
-        if state == .idle { addOrbit() }
+        core.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        aura.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        shell.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        if state == .idle { addOrbit(); startAuraBreath() }
         LoginItem.log("triangle layout \(Int(bounds.width))x\(Int(bounds.height))")
     }
 
@@ -378,6 +502,7 @@ final class TriangleView: NSView {
             }
             return
         }
+        guard !reduceMotion else { return }
         let r: CGFloat = 44
         let path = CGMutablePath()
         path.addEllipse(in: CGRect(x: bounds.midX - r, y: bounds.midY - r, width: r * 2, height: r * 2))
@@ -388,6 +513,187 @@ final class TriangleView: NSView {
         orbit.timingFunction = CAMediaTimingFunction(name: .linear)
         tri.add(orbit, forKey: "orbit")
         LoginItem.log("orbit added on \(Int(bounds.width))pt view")
+    }
+
+    // MARK: — premium motion: lean, trail, aura, burst
+
+    private var leanApplied: CGFloat = 0
+
+    /// Tilt toward movement direction — only when free-floating (not landed/agent).
+    func setLean(_ angle: CGFloat) {
+        guard !reduceMotion, state == .idle || state == .lock else { return }
+        let clamped = max(-0.38, min(0.38, angle))
+        guard abs(clamped - leanApplied) > 0.01 else { return }
+        leanApplied = clamped
+        let a = CABasicAnimation(keyPath: "transform.rotation.z")
+        a.fromValue = tri.presentation()?.value(forKeyPath: "transform.rotation.z") ?? leanApplied
+        a.toValue = clamped
+        a.duration = 0.18
+        a.timingFunction = .init(name: .easeOut)
+        a.isRemovedOnCompletion = true
+        tri.add(a, forKey: "lean")
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tri.transform = CATransform3DMakeRotation(clamped, 0, 0, 1)
+        CATransaction.commit()
+    }
+
+    /// Fading afterimage under the triangle while moving.
+    func spawnTrail() {
+        guard !reduceMotion, bounds.width > 0 else { return }
+        let p = CAShapeLayer()
+        p.path = NSBezierPath(ovalIn: NSRect(x: -2.5, y: -2.5, width: 5, height: 5)).cgPath
+        p.fillColor = NSColor(calibratedRed: 1, green: 0.35, blue: 0.28, alpha: 0.45).cgColor
+        p.position = NSPoint(x: bounds.midX, y: bounds.midY - 4)
+        layer?.insertSublayer(p, below: tri)
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0.45
+        fade.toValue = 0
+        fade.duration = 0.4
+        fade.timingFunction = .init(name: .easeOut)
+        p.add(fade, forKey: "fade")
+        let shrink = CABasicAnimation(keyPath: "transform.scale")
+        shrink.fromValue = 1.0
+        shrink.toValue = 0.2
+        shrink.duration = 0.4
+        shrink.timingFunction = .init(name: .easeOut)
+        p.add(shrink, forKey: "shrink")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) { p.removeFromSuperlayer() }
+    }
+
+    private var coreSpin: CABasicAnimation {
+        let s = CABasicAnimation(keyPath: "transform.rotation.z")
+        s.fromValue = 0
+        s.toValue = Double.pi * 2
+        s.duration = 5.5
+        s.repeatCount = .greatestFiniteMagnitude
+        s.timingFunction = CAMediaTimingFunction(name: .linear)
+        return s
+    }
+
+    private func startAuraBreath() {
+        guard !reduceMotion else { aura.opacity = 0.5; return }
+        aura.removeAnimation(forKey: "breath")
+        let b = CABasicAnimation(keyPath: "opacity")
+        b.fromValue = 0.22
+        b.toValue = 0.55
+        b.duration = 2.4
+        b.autoreverses = true
+        b.repeatCount = .greatestFiniteMagnitude
+        b.timingFunction = .init(name: .easeInEaseOut)
+        aura.add(b, forKey: "breath")
+    }
+
+    /// Eye-like blink of the inner core — occasional double-blink, never metronomic.
+    private func startCoreBlink() {
+        core.removeAnimation(forKey: "blink")
+        let blink = CAKeyframeAnimation(keyPath: "opacity")
+        // long open, quick close, open, tiny second close, open
+        blink.values = [0.9, 0.9, 0.15, 0.95, 0.9, 0.2, 0.9]
+        blink.keyTimes = [0, 0.42, 0.46, 0.50, 0.78, 0.82, 0.86]
+        blink.duration = 4.6 + Double.random(in: 0...2.5)
+        blink.repeatCount = .greatestFiniteMagnitude
+        blink.timingFunction = .init(name: .easeInEaseOut)
+        core.add(blink, forKey: "blink")
+    }
+
+    /// Every so often while idle: a tiny stretch, lean, or shake — it's alive.
+    private func scheduleFidget() {
+        guard !reduceMotion else { return }
+        fidgetWork?.cancel()
+        let delay = Double.random(in: 5...11)
+        let w = DispatchWorkItem { [weak self] in
+            guard let self = self, self.state == .idle else { return }
+            self.fidget()
+            self.scheduleFidget()
+        }
+        fidgetWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: w)
+    }
+
+    private func fidget() {
+        switch Int.random(in: 0..<4) {
+        case 0: // quick stretch
+            let s = CAKeyframeAnimation(keyPath: "transform.scale")
+            s.values = [1.0, 1.14, 0.96, 1.04, 1.0]
+            s.keyTimes = [0, 0.3, 0.55, 0.8, 1]
+            s.duration = 0.7
+            s.timingFunction = .init(name: .easeInEaseOut)
+            tri.add(s, forKey: "fidget")
+        case 1: // curious lean left-right
+            let r = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+            r.values = [0, -0.2, 0.16, -0.08, 0]
+            r.keyTimes = [0, 0.25, 0.55, 0.8, 1]
+            r.duration = 0.85
+            r.timingFunction = .init(name: .easeInEaseOut)
+            tri.add(r, forKey: "fidget")
+            core.add(r.copy() as? CAKeyframeAnimation ?? r, forKey: "fidget")
+        case 2: // double-take pulse on aura
+            let p = CABasicAnimation(keyPath: "opacity")
+            p.fromValue = aura.opacity
+            p.toValue = 0.85
+            p.duration = 0.18
+            p.autoreverses = true
+            p.repeatCount = 2
+            aura.add(p, forKey: "fidget")
+        default: // micro hop
+            let hop = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            hop.values = [0, 3.5, -1, 0]
+            hop.keyTimes = [0, 0.3, 0.6, 1]
+            hop.duration = 0.4
+            hop.timingFunction = .init(name: .easeOut)
+            tri.add(hop, forKey: "fidget")
+        }
+    }
+
+    /// Confetti of tiny triangles on verify.
+    private func burst() {
+        guard !reduceMotion else { return }
+        let c = center()
+        for i in 0..<9 {
+            let p = CAShapeLayer()
+            p.path = Self.triangle(side: 4)
+            p.fillColor = NSColor(calibratedRed: 1, green: 0.75, blue: 0.65, alpha: 0.9).cgColor
+            p.position = c
+            layer?.addSublayer(p)
+            let a = (Double(i) / 9.0) * .pi * 2
+            let fly = CABasicAnimation(keyPath: "position")
+            fly.fromValue = c
+            fly.toValue = NSPoint(x: c.x + CGFloat(cos(a)) * 34, y: c.y + CGFloat(sin(a)) * 34)
+            fly.duration = 0.55
+            fly.timingFunction = .init(name: .easeOut)
+            p.add(fly, forKey: "fly")
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0.9
+            fade.toValue = 0
+            fade.duration = 0.55
+            fade.timingFunction = .init(name: .easeOut)
+            p.add(fade, forKey: "fade")
+            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+            spin.fromValue = 0
+            spin.toValue = Double.pi * (i % 2 == 0 ? 1 : -1)
+            spin.duration = 0.55
+            p.add(spin, forKey: "spin")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) { p.removeFromSuperlayer() }
+        }
+    }
+
+    private func pulseBracketIn() {
+        guard bracketFrame != nil, !reduceMotion else { return }
+        bracket.removeAnimation(forKey: "in")
+        let o = CABasicAnimation(keyPath: "opacity")
+        o.fromValue = 0
+        o.toValue = 1
+        o.duration = 0.22
+        bracket.add(o, forKey: "in")
+        let s = CASpringAnimation(keyPath: "transform.scale")
+        s.fromValue = 1.35
+        s.toValue = 1.0
+        s.damping = 16
+        s.stiffness = 280
+        s.mass = 0.4
+        s.duration = 0.4
+        bracket.add(s, forKey: "inScale")
     }
 
     private func animate(_ layer: CAShapeLayer, _ key: String, _ from: CGFloat, _ to: CGFloat, dur: CFTimeInterval = 0.9, repeat_: Float = 0, timing: CAMediaTimingFunction = .init(name: .easeOut)) {
@@ -407,6 +713,10 @@ final class TriangleView: NSView {
         traj.removeAllAnimations()
         dots.isHidden = true
         for d in dotLayers { d.removeAllAnimations() }
+        alertMark.isHidden = true
+        fidgetWork?.cancel()
+        fidgetWork = nil
+        if s != .lock { tether.isHidden = true }
 
         tri.shadowOpacity = 0.9
         tri.shadowRadius = 9
@@ -415,20 +725,65 @@ final class TriangleView: NSView {
         traj.isHidden = true
         bracket.isHidden = (s == .idle)
 
+        // state morph kick — a small rotational snap so every transition feels intentional
+        if !reduceMotion {
+            let kick = CABasicAnimation(keyPath: "transform.rotation.z")
+            kick.fromValue = -0.12
+            kick.toValue = 0
+            kick.duration = 0.32
+            kick.timingFunction = .init(name: .easeOut)
+            tri.add(kick, forKey: "stateKick")
+        }
+
         switch s {
         case .idle:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
+            aura.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.28).cgColor
             addOrbit()
             animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+            aura.isHidden = false
+            startAuraBreath()
+            shell.opacity = 0.8
+            startShellSpin(duration: 9.0)
+            startNodeWave()
+            core.opacity = 0.9
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                core.add(coreSpin, forKey: "coreSpin")
+                startCoreBlink()
+                scheduleFidget()
+            }
         case .lock:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.2, blue: 0.16, alpha: 1).cgColor
             layoutBracket()
             animate(tri, "transform.scale", 1.0, 1.12, dur: 0.7, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.7
+            shell.opacity = 0.9
+            startShellSpin(duration: 4.5)
+            startNodeWave()
+            core.opacity = 1
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion { core.add(coreSpin, forKey: "coreSpin") }
         case .reasoning:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.3, blue: 0.24, alpha: 1).cgColor
             animate(tri, "transform.scale", 0.82, 1.18, dur: 0.62, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
             dots.isHidden = false
             layoutDots()
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.6
+            shell.opacity = 1.0
+            startShellSpin(duration: 2.6)
+            startNodeWave()
+            core.opacity = 1
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                let fast = coreSpin
+                fast.duration = 2.2
+                core.add(fast, forKey: "coreSpin")
+            }
         case .executing:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.45, blue: 0.35, alpha: 1).cgColor
             layoutTraj()
@@ -440,10 +795,33 @@ final class TriangleView: NSView {
                 dash.repeatCount = .greatestFiniteMagnitude
                 traj.add(dash, forKey: "dash")
             }
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.5
+            shell.opacity = 1.0
+            startShellSpin(duration: 1.6)
+            startNodeWave()
+            core.opacity = 0.85
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                let fast = coreSpin
+                fast.duration = 1.4
+                core.add(fast, forKey: "coreSpin")
+            }
         case .verified:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.85, blue: 0.8, alpha: 1).cgColor
             check.isHidden = false
             layoutCheck()
+            if !reduceMotion {
+                let pop = CASpringAnimation(keyPath: "transform.scale")
+                pop.fromValue = 0.2
+                pop.toValue = 1.0
+                pop.damping = 12
+                pop.stiffness = 260
+                pop.mass = 0.45
+                pop.duration = 0.55
+                check.add(pop, forKey: "checkPop")
+            }
             ring.isHidden = false
             ring.lineDashPattern = nil
             layoutRing(expand: true)
@@ -453,6 +831,18 @@ final class TriangleView: NSView {
             fade.toValue = 0
             fade.duration = 0.75
             ring.add(fade, forKey: "fade")
+            burst()
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            let bright = CABasicAnimation(keyPath: "opacity")
+            bright.fromValue = 0.85
+            bright.toValue = 0.3
+            bright.duration = 1.0
+            aura.add(bright, forKey: "breath")
+            shell.opacity = 1.0
+            stopShell()
+            core.opacity = 0.95
+            core.removeAnimation(forKey: "coreSpin")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                 guard let self = self, self.state == .verified else { return }
                 self.ring.removeAllAnimations()
@@ -463,6 +853,24 @@ final class TriangleView: NSView {
             tri.fillColor = NSColor(calibratedRed: 0.45, green: 0.08, blue: 0.08, alpha: 1).cgColor
             tri.shadowOpacity = 0.2
             _ = animateBlocked
+            alertMark.isHidden = false
+            layoutAlert()
+            if !reduceMotion {
+                let blink = CABasicAnimation(keyPath: "opacity")
+                blink.fromValue = 1
+                blink.toValue = 0.25
+                blink.duration = 0.55
+                blink.autoreverses = true
+                blink.repeatCount = .greatestFiniteMagnitude
+                alertMark.add(blink, forKey: "blink")
+                aura.isHidden = false
+                aura.strokeColor = NSColor(calibratedRed: 1, green: 0.1, blue: 0.08, alpha: 0.45).cgColor
+                startAuraBreath()
+            }
+            shell.opacity = 0.25
+            stopShell()
+            core.opacity = 0.35
+            core.removeAnimation(forKey: "coreSpin")
         }
     }
 
@@ -477,7 +885,10 @@ final class TriangleView: NSView {
     private func center() -> NSPoint { NSPoint(x: bounds.midX, y: bounds.midY) }
 
     private func layoutBracket() {
-        guard let f = bracketFrame else { return }
+        guard let f = bracketFrame else {
+            tether.isHidden = true
+            return
+        }
         let c = center()
         let r = NSRect(x: c.x + (f.midX - c.x) - f.width / 2 - 4,
                        y: c.y + (f.midY - c.y) - f.height / 2 - 4,
@@ -491,6 +902,37 @@ final class TriangleView: NSView {
         p.move(to: NSPoint(x: r.maxX - len, y: r.maxY));        p.line(to: NSPoint(x: r.maxX, y: r.maxY));        p.line(to: NSPoint(x: r.maxX, y: r.maxY - len))
         bracket.path = p.cgPath
         bracket.isHidden = (state == .idle)
+        layoutTether()
+    }
+
+    /// Dashed line from the triangle to whatever it's locked on — a leash.
+    private func layoutTether() {
+        guard let f = bracketFrame, state == .lock, !reduceMotion else {
+            tether.isHidden = true
+            return
+        }
+        let c = center()
+        let mid = NSPoint(x: f.midX, y: f.midY)
+        // don't draw through the triangle body
+        let dx = mid.x - c.x, dy = mid.y - c.y
+        let len = hypot(dx, dy)
+        guard len > 18 else { tether.isHidden = true; return }
+        let ux = dx / len, uy = dy / len
+        let start = NSPoint(x: c.x + ux * 12, y: c.y + uy * 12)
+        let p = NSBezierPath()
+        p.move(to: start)
+        p.line(to: mid)
+        tether.path = p.cgPath
+        tether.isHidden = false
+        if tether.animation(forKey: "dash") == nil {
+            let dash = CABasicAnimation(keyPath: "lineDashPhase")
+            dash.fromValue = 7
+            dash.toValue = 0
+            dash.duration = 0.55
+            dash.repeatCount = .greatestFiniteMagnitude
+            dash.timingFunction = .init(name: .linear)
+            tether.add(dash, forKey: "dash")
+        }
     }
 
     private func layoutTraj() {
@@ -513,6 +955,12 @@ final class TriangleView: NSView {
         check.position = center()
         check.bounds = NSRect(x: 0, y: 0, width: 16, height: 16)
         check.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+    }
+
+    private func layoutAlert() {
+        alertMark.position = center()
+        alertMark.bounds = NSRect(x: 0, y: 0, width: 14, height: 18)
+        alertMark.anchorPoint = CGPoint(x: 0.5, y: 0.5)
     }
 
     private func layoutDots() {
@@ -578,6 +1026,8 @@ final class OverlayController {
 
     var agentActive = false
     var detached = false
+    private var lastTrailAt = Date.distantPast
+    private var prevPos: NSPoint? = nil
     var execTarget: CGPoint? {
         didSet {
             guard let t = execTarget else { triView.trajEnd = nil; return }
@@ -607,11 +1057,22 @@ final class OverlayController {
         let tx = m.x, ty = m.y
         let dt: CGFloat = 1.0 / 60.0
         let k = 1 - exp(-dt * 14)
+        let prev = prevPos ?? pos
         pos.x += (tx - pos.x) * k
         pos.y += (ty - pos.y) * k
+        prevPos = pos
         angle += (tiltAngle(dx: tx - (pos.x - (tx - (tx - pos.x)) * 0), dy: 0) - angle) * k
         if !detached {
             panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
+            let vx = pos.x - prev.x, vy = pos.y - prev.y
+            let speed = hypot(vx, vy)
+            if speed > 0.8 {
+                triView.setLean(atan2(vy, vx) - .pi / 2)
+                if speed > 2.2, Date().timeIntervalSince(lastTrailAt) > 0.05 {
+                    lastTrailAt = Date()
+                    triView.spawnTrail()
+                }
+            }
         }
 
         // hover target acquisition (throttled) — paused while the agent drives
@@ -2041,7 +2502,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
 
     private func skillRename(_ args: String) {
         // split on " to " or " as " (natural phrasing)
-        let lower = args.lowercased()
+        _ = args.lowercased()
         var sepRange: Range<String.Index>?
         if let r = args.range(of: " to ", options: .caseInsensitive) { sepRange = r }
         else if let r = args.range(of: " as ", options: .caseInsensitive) { sepRange = r }
@@ -3962,8 +4423,13 @@ extension LensController {
 // MARK: - Entry
 
 let app = NSApplication.shared
+enum AppDelegateHolder {
+    nonisolated(unsafe) static var delegate: AppDelegate?
+}
 MainActor.assumeIsolated {
-    app.delegate = AppDelegate()
+    let delegate = AppDelegate()   // strong ref — NSApplication keeps delegate weakly
+    AppDelegateHolder.delegate = delegate
+    app.delegate = delegate
     app.setActivationPolicy(.accessory)
     app.run()
 }

@@ -139,10 +139,16 @@ cat > "$TRI_DST/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleIconFile</key><string>NexusTriangle</string>
 </dict>
 </plist>
 PLIST
 cp "$TMPU/NexusTriangle" "$TRI_DST/Contents/MacOS/NexusTriangle"
+mkdir -p "$TRI_DST/Contents/Resources"
+if [ -f "$PKG/scripts/NexusTri.icns" ]; then
+  cp "$PKG/scripts/NexusTri.icns" "$TRI_DST/Contents/Resources/NexusTriangle.icns"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string NexusTriangle" "$TRI_DST/Contents/Info.plist" 2>/dev/null || true
+fi
 sign_app "$TRI_DST"
 ok "Installed: $TRI_DST"
 
@@ -187,9 +193,13 @@ cat > "$NEXUS_DST/Contents/Info.plist" <<'PLIST'
             <array><string>nexus</string></array>
         </dict>
     </array>
+    <key>CFBundleIconFile</key><string>Nexus</string>
 </dict>
 </plist>
 PLIST
+if [ -f "$PKG/scripts/NexusTri.icns" ]; then
+  cp "$PKG/scripts/NexusTri.icns" "$NEXUS_DST/Contents/Resources/Nexus.icns"
+fi
 sign_app "$NEXUS_DST"
 rm -rf "$TMPU"
 ok "Installed: $NEXUS_DST"

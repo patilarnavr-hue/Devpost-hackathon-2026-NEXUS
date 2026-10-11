@@ -17,8 +17,9 @@ rsync -a \
   --exclude .git \
   --exclude "NEXUS Installer.app" \
   --exclude .nexus-copy \
-  "$PKG/Package.swift" "$PKG/README.md" "$PKG/install.sh" "$PKG/nexus-setup.sh" \
-  "$PKG/Sources" "$PKG/NexusTriangle" "$PKG/FixturePackage" \
+  "$PKG/Package.swift" "$PKG/README.md" "$PKG/LICENSE" "$PKG/CONTRIBUTING.md" \
+  "$PKG/install.sh" "$PKG/nexus-setup.sh" \
+  "$PKG/Sources" "$PKG/NexusTriangle" "$PKG/FixturePackage" "$PKG/scripts" \
   "$APP/Contents/Resources/package/"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -37,9 +38,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleIconFile</key><string>NexusTri</string>
 </dict>
 </plist>
 PLIST
+
+if [ -f "$PKG/scripts/NexusTri.icns" ]; then
+  cp "$PKG/scripts/NexusTri.icns" "$APP/Contents/Resources/NexusTri.icns"
+fi
 
 cat > "$APP/Contents/MacOS/NEXUS Installer" <<'LAUNCH'
 #!/bin/bash

@@ -174,14 +174,12 @@ enum IntentClassifier {
 
         // create
         for verb in createVerbs where t.hasPrefix(verb) {
-            let rest = String(t.dropFirst(verb.count))
             if (hasNoun || t.contains("calendar")) && (hasTime || verb.hasPrefix("block")) {
                 return true
             }
         }
         // delete
         for verb in deleteVerbs where t.hasPrefix(verb) {
-            let rest = String(t.dropFirst(verb.count))
             if hasNoun || t.contains("calendar") {
                 return true
             }

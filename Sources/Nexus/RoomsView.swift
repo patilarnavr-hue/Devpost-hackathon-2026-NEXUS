@@ -164,11 +164,13 @@ struct RoomsView: View {
                                 ForEach(collab.messages) { m in
                                     chatRow(m)
                                         .id(m.id)
+                                        .transition(.opacity.combined(with: .offset(y: 8)))
                                 }
                             }
                             .padding(14)
+                            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: collab.messages.count)
                         }
-                        .onChange(of: collab.messages.count) { _ in
+                        .onChange(of: collab.messages.count) {
                             if let last = collab.messages.last {
                                 withAnimation(.easeOut(duration: 0.15)) {
                                     proxy.scrollTo(last.id, anchor: .bottom)
@@ -219,6 +221,8 @@ struct RoomsView: View {
                                         Image(systemName: t.done ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 13))
                                             .foregroundColor(t.done ? Palette.accent : Palette.gray)
+                                            .scaleEffect(t.done ? 1.15 : 1.0)
+                                            .animation(.spring(response: 0.28, dampingFraction: 0.6), value: t.done)
                                     }
                                     .buttonStyle(.plain)
                                     Text(t.text)
@@ -232,9 +236,11 @@ struct RoomsView: View {
                                 }
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 4)
+                                .transition(.opacity.combined(with: .offset(y: 6)))
                             }
                         }
                         .padding(.vertical, 10)
+                        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: collab.tasks.count)
                     }
 
                     Rectangle().fill(Palette.white.opacity(0.08)).frame(height: 1)

@@ -56,24 +56,34 @@ final class State {
 final class TriangleView: NSView {
 
     let tri = CAShapeLayer()
+    let core = CAShapeLayer()
+    let aura = CAShapeLayer()
     let ring = CAShapeLayer()
     let traj = CAShapeLayer()
+    let tether = CAShapeLayer()
+    let shell = CAShapeLayer()
     let bracket = CAShapeLayer()
     let check = CATextLayer()
+    let alertMark = CATextLayer()
     let dots = CALayer()
     private var dotLayers: [CAShapeLayer] = []
+    private var nodeLayers: [CAShapeLayer] = []
+    private var fidgetWork: DispatchWorkItem?
 
     var state: TriState = .idle {
         didSet { if state != oldValue { apply(state) } }
     }
     var bracketFrame: CGRect? {
-        didSet { layoutBracket() }
+        didSet {
+            if bracketFrame != oldValue { layoutBracket(); pulseBracketIn(); layoutTether() }
+        }
     }
     var trajEnd: CGPoint? {
         didSet { layoutTraj() }
     }
 
     private var glowing = false
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     func setGlow(_ on: Bool) {
         if on {
@@ -111,6 +121,7 @@ final class TriangleView: NSView {
     }
 
     private func restorePulse() {
+        guard !reduceMotion else { return }
         switch state {
         case .idle:      animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
         case .lock:      animate(tri, "transform.scale", 1.0, 1.12, dur: 0.7, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
@@ -245,6 +256,10 @@ final class TriangleView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         tri.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        core.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        shell.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        aura.opacity = 0
+        aura.removeAnimation(forKey: "breath")
         CATransaction.commit()
         tri.removeAnimation(forKey: "transform.scale")
         let s = CASpringAnimation(keyPath: "transform.scale")
@@ -255,6 +270,9 @@ final class TriangleView: NSView {
         s.mass = 0.5
         s.duration = 0.5
         tri.add(s, forKey: "land")
+        let cs = s.copy() as? CASpringAnimation ?? s
+        core.add(cs, forKey: "land")
+        shell.add(cs.copy() as? CASpringAnimation ?? cs, forKey: "land")
         let r = CASpringAnimation(keyPath: "transform.rotation.z")
         r.fromValue = -0.4
         r.toValue = 0
@@ -269,9 +287,13 @@ final class TriangleView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         tri.transform = CATransform3DIdentity
+        core.transform = CATransform3DIdentity
+        shell.transform = CATransform3DIdentity
         CATransaction.commit()
         tri.removeAnimation(forKey: "land")
         tri.removeAnimation(forKey: "landSpin")
+        core.removeAnimation(forKey: "land")
+        shell.removeAnimation(forKey: "land")
         let s = CASpringAnimation(keyPath: "transform.scale")
         s.fromValue = 0.62
         s.toValue = 1.0
@@ -280,12 +302,29 @@ final class TriangleView: NSView {
         s.mass = 0.55
         s.duration = 0.55
         tri.add(s, forKey: "takeoff")
+        let cs = s.copy() as? CASpringAnimation ?? s
+        core.add(cs, forKey: "takeoff")
+        shell.add(cs.copy() as? CASpringAnimation ?? cs, forKey: "takeoff")
+        if state == .idle || state == .lock { startAuraBreath(); aura.opacity = 1 }
     }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+
+        aura.path = NSBezierPath(ovalIn: NSRect(x: -28, y: -28, width: 56, height: 56)).cgPath
+        aura.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.28).cgColor
+        aura.lineWidth = 0.8
+        aura.fillColor = nil
+        layer?.addSublayer(aura)
+
+        tether.strokeColor = NSColor(calibratedRed: 1, green: 0.35, blue: 0.3, alpha: 0.55).cgColor
+        tether.lineWidth = 0.9
+        tether.lineDashPattern = [3, 4]
+        tether.fillColor = nil
+        tether.isHidden = true
+        layer?.addSublayer(tether)
 
         tri.path = Self.triangle(side: 20)
         tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
@@ -294,6 +333,35 @@ final class TriangleView: NSView {
         tri.shadowOffset = .zero
         tri.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         layer?.addSublayer(tri)
+
+        // gyroscopic shell — wireframe triangle riding counter to the body
+        shell.path = Self.triangle(side: 30)
+        shell.strokeColor = NSColor(calibratedRed: 1, green: 0.4, blue: 0.32, alpha: 0.55).cgColor
+        shell.lineWidth = 0.9
+        shell.lineDashPattern = [4, 3]
+        shell.fillColor = nil
+        shell.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        shell.opacity = 0.0
+        layer?.addSublayer(shell)
+
+        // vertex nodes — one per corner of the shell, pulse in a wave
+        for p in Self.trianglePoints(side: 30) {
+            let n = CAShapeLayer()
+            n.path = NSBezierPath(ovalIn: NSRect(x: -1.7, y: -1.7, width: 3.4, height: 3.4)).cgPath
+            n.fillColor = NSColor(calibratedRed: 1, green: 0.75, blue: 0.68, alpha: 1).cgColor
+            n.shadowColor = NSColor(calibratedRed: 1, green: 0.4, blue: 0.32, alpha: 1).cgColor
+            n.shadowRadius = 3
+            n.shadowOpacity = 0.9
+            n.position = p
+            shell.addSublayer(n)
+            nodeLayers.append(n)
+        }
+
+        core.path = Self.triangle(side: 8)
+        core.fillColor = NSColor(calibratedRed: 1, green: 0.88, blue: 0.82, alpha: 0.95).cgColor
+        core.opacity = 0.0
+        core.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        layer?.addSublayer(core)
 
         bracket.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.95).cgColor
         bracket.lineWidth = 1.4
@@ -322,6 +390,15 @@ final class TriangleView: NSView {
         check.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
         check.isHidden = true
         layer?.addSublayer(check)
+
+        alertMark.string = "!"
+        alertMark.fontSize = 15
+        alertMark.font = NSFont.monospacedSystemFont(ofSize: 15, weight: .black)
+        alertMark.foregroundColor = NSColor(calibratedRed: 1, green: 0.55, blue: 0.5, alpha: 1).cgColor
+        alertMark.alignmentMode = .center
+        alertMark.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        alertMark.isHidden = true
+        layer?.addSublayer(alertMark)
 
         dots.isHidden = true
         layer?.addSublayer(dots)
@@ -352,10 +429,57 @@ final class TriangleView: NSView {
         return p.cgPath
     }
 
+    static func trianglePoints(side: CGFloat) -> [NSPoint] {
+        let h = side * 0.866
+        return [NSPoint(x: 0, y: h * 0.62),
+                NSPoint(x: -side / 2, y: -h * 0.38),
+                NSPoint(x: side / 2, y: -h * 0.38)]
+    }
+
+    // MARK: — shell (gyroscope) + vertex nodes
+
+    private func startShellSpin(duration: CFTimeInterval) {
+        guard !reduceMotion else { return }
+        shell.removeAnimation(forKey: "spin")
+        let s = CABasicAnimation(keyPath: "transform.rotation.z")
+        s.fromValue = -0.4
+        s.toValue = -0.4 + Double.pi * 2
+        s.duration = duration
+        s.repeatCount = .greatestFiniteMagnitude
+        s.timingFunction = CAMediaTimingFunction(name: .linear)
+        shell.add(s, forKey: "spin")
+    }
+
+    private func startNodeWave() {
+        guard !reduceMotion else {
+            for n in nodeLayers { n.opacity = 0.7 }
+            return
+        }
+        for (i, n) in nodeLayers.enumerated() {
+            n.removeAnimation(forKey: "wave")
+            let w = CAKeyframeAnimation(keyPath: "opacity")
+            w.values = [0.25, 1.0, 0.25]
+            w.keyTimes = [0, 0.35, 1]
+            w.duration = 2.4
+            w.beginTime = CACurrentMediaTime() + Double(i) * 0.35
+            w.repeatCount = .greatestFiniteMagnitude
+            w.timingFunction = .init(name: .easeInEaseOut)
+            n.add(w, forKey: "wave")
+        }
+    }
+
+    private func stopShell() {
+        shell.removeAnimation(forKey: "spin")
+        for n in nodeLayers { n.removeAnimation(forKey: "wave"); n.opacity = 0.3 }
+    }
+
     override func layout() {
         super.layout()
         tri.position = NSPoint(x: bounds.midX, y: bounds.midY)
-        if state == .idle { addOrbit() }
+        core.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        aura.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        shell.position = NSPoint(x: bounds.midX, y: bounds.midY)
+        if state == .idle { addOrbit(); startAuraBreath() }
         LoginItem.log("triangle layout \(Int(bounds.width))x\(Int(bounds.height))")
     }
 
@@ -378,6 +502,7 @@ final class TriangleView: NSView {
             }
             return
         }
+        guard !reduceMotion else { return }
         let r: CGFloat = 44
         let path = CGMutablePath()
         path.addEllipse(in: CGRect(x: bounds.midX - r, y: bounds.midY - r, width: r * 2, height: r * 2))
@@ -388,6 +513,187 @@ final class TriangleView: NSView {
         orbit.timingFunction = CAMediaTimingFunction(name: .linear)
         tri.add(orbit, forKey: "orbit")
         LoginItem.log("orbit added on \(Int(bounds.width))pt view")
+    }
+
+    // MARK: — premium motion: lean, trail, aura, burst
+
+    private var leanApplied: CGFloat = 0
+
+    /// Tilt toward movement direction — only when free-floating (not landed/agent).
+    func setLean(_ angle: CGFloat) {
+        guard !reduceMotion, state == .idle || state == .lock else { return }
+        let clamped = max(-0.38, min(0.38, angle))
+        guard abs(clamped - leanApplied) > 0.01 else { return }
+        leanApplied = clamped
+        let a = CABasicAnimation(keyPath: "transform.rotation.z")
+        a.fromValue = tri.presentation()?.value(forKeyPath: "transform.rotation.z") ?? leanApplied
+        a.toValue = clamped
+        a.duration = 0.18
+        a.timingFunction = .init(name: .easeOut)
+        a.isRemovedOnCompletion = true
+        tri.add(a, forKey: "lean")
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tri.transform = CATransform3DMakeRotation(clamped, 0, 0, 1)
+        CATransaction.commit()
+    }
+
+    /// Fading afterimage under the triangle while moving.
+    func spawnTrail() {
+        guard !reduceMotion, bounds.width > 0 else { return }
+        let p = CAShapeLayer()
+        p.path = NSBezierPath(ovalIn: NSRect(x: -2.5, y: -2.5, width: 5, height: 5)).cgPath
+        p.fillColor = NSColor(calibratedRed: 1, green: 0.35, blue: 0.28, alpha: 0.45).cgColor
+        p.position = NSPoint(x: bounds.midX, y: bounds.midY - 4)
+        layer?.insertSublayer(p, below: tri)
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0.45
+        fade.toValue = 0
+        fade.duration = 0.4
+        fade.timingFunction = .init(name: .easeOut)
+        p.add(fade, forKey: "fade")
+        let shrink = CABasicAnimation(keyPath: "transform.scale")
+        shrink.fromValue = 1.0
+        shrink.toValue = 0.2
+        shrink.duration = 0.4
+        shrink.timingFunction = .init(name: .easeOut)
+        p.add(shrink, forKey: "shrink")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) { p.removeFromSuperlayer() }
+    }
+
+    private var coreSpin: CABasicAnimation {
+        let s = CABasicAnimation(keyPath: "transform.rotation.z")
+        s.fromValue = 0
+        s.toValue = Double.pi * 2
+        s.duration = 5.5
+        s.repeatCount = .greatestFiniteMagnitude
+        s.timingFunction = CAMediaTimingFunction(name: .linear)
+        return s
+    }
+
+    private func startAuraBreath() {
+        guard !reduceMotion else { aura.opacity = 0.5; return }
+        aura.removeAnimation(forKey: "breath")
+        let b = CABasicAnimation(keyPath: "opacity")
+        b.fromValue = 0.22
+        b.toValue = 0.55
+        b.duration = 2.4
+        b.autoreverses = true
+        b.repeatCount = .greatestFiniteMagnitude
+        b.timingFunction = .init(name: .easeInEaseOut)
+        aura.add(b, forKey: "breath")
+    }
+
+    /// Eye-like blink of the inner core — occasional double-blink, never metronomic.
+    private func startCoreBlink() {
+        core.removeAnimation(forKey: "blink")
+        let blink = CAKeyframeAnimation(keyPath: "opacity")
+        // long open, quick close, open, tiny second close, open
+        blink.values = [0.9, 0.9, 0.15, 0.95, 0.9, 0.2, 0.9]
+        blink.keyTimes = [0, 0.42, 0.46, 0.50, 0.78, 0.82, 0.86]
+        blink.duration = 4.6 + Double.random(in: 0...2.5)
+        blink.repeatCount = .greatestFiniteMagnitude
+        blink.timingFunction = .init(name: .easeInEaseOut)
+        core.add(blink, forKey: "blink")
+    }
+
+    /// Every so often while idle: a tiny stretch, lean, or shake — it's alive.
+    private func scheduleFidget() {
+        guard !reduceMotion else { return }
+        fidgetWork?.cancel()
+        let delay = Double.random(in: 5...11)
+        let w = DispatchWorkItem { [weak self] in
+            guard let self = self, self.state == .idle else { return }
+            self.fidget()
+            self.scheduleFidget()
+        }
+        fidgetWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: w)
+    }
+
+    private func fidget() {
+        switch Int.random(in: 0..<4) {
+        case 0: // quick stretch
+            let s = CAKeyframeAnimation(keyPath: "transform.scale")
+            s.values = [1.0, 1.14, 0.96, 1.04, 1.0]
+            s.keyTimes = [0, 0.3, 0.55, 0.8, 1]
+            s.duration = 0.7
+            s.timingFunction = .init(name: .easeInEaseOut)
+            tri.add(s, forKey: "fidget")
+        case 1: // curious lean left-right
+            let r = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+            r.values = [0, -0.2, 0.16, -0.08, 0]
+            r.keyTimes = [0, 0.25, 0.55, 0.8, 1]
+            r.duration = 0.85
+            r.timingFunction = .init(name: .easeInEaseOut)
+            tri.add(r, forKey: "fidget")
+            core.add(r.copy() as? CAKeyframeAnimation ?? r, forKey: "fidget")
+        case 2: // double-take pulse on aura
+            let p = CABasicAnimation(keyPath: "opacity")
+            p.fromValue = aura.opacity
+            p.toValue = 0.85
+            p.duration = 0.18
+            p.autoreverses = true
+            p.repeatCount = 2
+            aura.add(p, forKey: "fidget")
+        default: // micro hop
+            let hop = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            hop.values = [0, 3.5, -1, 0]
+            hop.keyTimes = [0, 0.3, 0.6, 1]
+            hop.duration = 0.4
+            hop.timingFunction = .init(name: .easeOut)
+            tri.add(hop, forKey: "fidget")
+        }
+    }
+
+    /// Confetti of tiny triangles on verify.
+    private func burst() {
+        guard !reduceMotion else { return }
+        let c = center()
+        for i in 0..<9 {
+            let p = CAShapeLayer()
+            p.path = Self.triangle(side: 4)
+            p.fillColor = NSColor(calibratedRed: 1, green: 0.75, blue: 0.65, alpha: 0.9).cgColor
+            p.position = c
+            layer?.addSublayer(p)
+            let a = (Double(i) / 9.0) * .pi * 2
+            let fly = CABasicAnimation(keyPath: "position")
+            fly.fromValue = c
+            fly.toValue = NSPoint(x: c.x + CGFloat(cos(a)) * 34, y: c.y + CGFloat(sin(a)) * 34)
+            fly.duration = 0.55
+            fly.timingFunction = .init(name: .easeOut)
+            p.add(fly, forKey: "fly")
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0.9
+            fade.toValue = 0
+            fade.duration = 0.55
+            fade.timingFunction = .init(name: .easeOut)
+            p.add(fade, forKey: "fade")
+            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+            spin.fromValue = 0
+            spin.toValue = Double.pi * (i % 2 == 0 ? 1 : -1)
+            spin.duration = 0.55
+            p.add(spin, forKey: "spin")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) { p.removeFromSuperlayer() }
+        }
+    }
+
+    private func pulseBracketIn() {
+        guard bracketFrame != nil, !reduceMotion else { return }
+        bracket.removeAnimation(forKey: "in")
+        let o = CABasicAnimation(keyPath: "opacity")
+        o.fromValue = 0
+        o.toValue = 1
+        o.duration = 0.22
+        bracket.add(o, forKey: "in")
+        let s = CASpringAnimation(keyPath: "transform.scale")
+        s.fromValue = 1.35
+        s.toValue = 1.0
+        s.damping = 16
+        s.stiffness = 280
+        s.mass = 0.4
+        s.duration = 0.4
+        bracket.add(s, forKey: "inScale")
     }
 
     private func animate(_ layer: CAShapeLayer, _ key: String, _ from: CGFloat, _ to: CGFloat, dur: CFTimeInterval = 0.9, repeat_: Float = 0, timing: CAMediaTimingFunction = .init(name: .easeOut)) {
@@ -407,6 +713,10 @@ final class TriangleView: NSView {
         traj.removeAllAnimations()
         dots.isHidden = true
         for d in dotLayers { d.removeAllAnimations() }
+        alertMark.isHidden = true
+        fidgetWork?.cancel()
+        fidgetWork = nil
+        if s != .lock { tether.isHidden = true }
 
         tri.shadowOpacity = 0.9
         tri.shadowRadius = 9
@@ -415,20 +725,65 @@ final class TriangleView: NSView {
         traj.isHidden = true
         bracket.isHidden = (s == .idle)
 
+        // state morph kick — a small rotational snap so every transition feels intentional
+        if !reduceMotion {
+            let kick = CABasicAnimation(keyPath: "transform.rotation.z")
+            kick.fromValue = -0.12
+            kick.toValue = 0
+            kick.duration = 0.32
+            kick.timingFunction = .init(name: .easeOut)
+            tri.add(kick, forKey: "stateKick")
+        }
+
         switch s {
         case .idle:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.15, blue: 0.13, alpha: 1).cgColor
+            aura.strokeColor = NSColor(calibratedRed: 1, green: 0.25, blue: 0.2, alpha: 0.28).cgColor
             addOrbit()
             animate(tri, "transform.scale", 1.0, 1.06, dur: 1.4, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+            aura.isHidden = false
+            startAuraBreath()
+            shell.opacity = 0.8
+            startShellSpin(duration: 9.0)
+            startNodeWave()
+            core.opacity = 0.9
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                core.add(coreSpin, forKey: "coreSpin")
+                startCoreBlink()
+                scheduleFidget()
+            }
         case .lock:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.2, blue: 0.16, alpha: 1).cgColor
             layoutBracket()
             animate(tri, "transform.scale", 1.0, 1.12, dur: 0.7, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.7
+            shell.opacity = 0.9
+            startShellSpin(duration: 4.5)
+            startNodeWave()
+            core.opacity = 1
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion { core.add(coreSpin, forKey: "coreSpin") }
         case .reasoning:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.3, blue: 0.24, alpha: 1).cgColor
             animate(tri, "transform.scale", 0.82, 1.18, dur: 0.62, repeat_: .greatestFiniteMagnitude, timing: .init(name: .easeInEaseOut))
             dots.isHidden = false
             layoutDots()
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.6
+            shell.opacity = 1.0
+            startShellSpin(duration: 2.6)
+            startNodeWave()
+            core.opacity = 1
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                let fast = coreSpin
+                fast.duration = 2.2
+                core.add(fast, forKey: "coreSpin")
+            }
         case .executing:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.45, blue: 0.35, alpha: 1).cgColor
             layoutTraj()
@@ -440,10 +795,33 @@ final class TriangleView: NSView {
                 dash.repeatCount = .greatestFiniteMagnitude
                 traj.add(dash, forKey: "dash")
             }
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            aura.opacity = 0.5
+            shell.opacity = 1.0
+            startShellSpin(duration: 1.6)
+            startNodeWave()
+            core.opacity = 0.85
+            core.removeAnimation(forKey: "coreSpin")
+            if !reduceMotion {
+                let fast = coreSpin
+                fast.duration = 1.4
+                core.add(fast, forKey: "coreSpin")
+            }
         case .verified:
             tri.fillColor = NSColor(calibratedRed: 1.0, green: 0.85, blue: 0.8, alpha: 1).cgColor
             check.isHidden = false
             layoutCheck()
+            if !reduceMotion {
+                let pop = CASpringAnimation(keyPath: "transform.scale")
+                pop.fromValue = 0.2
+                pop.toValue = 1.0
+                pop.damping = 12
+                pop.stiffness = 260
+                pop.mass = 0.45
+                pop.duration = 0.55
+                check.add(pop, forKey: "checkPop")
+            }
             ring.isHidden = false
             ring.lineDashPattern = nil
             layoutRing(expand: true)
@@ -453,6 +831,18 @@ final class TriangleView: NSView {
             fade.toValue = 0
             fade.duration = 0.75
             ring.add(fade, forKey: "fade")
+            burst()
+            aura.isHidden = false
+            aura.removeAnimation(forKey: "breath")
+            let bright = CABasicAnimation(keyPath: "opacity")
+            bright.fromValue = 0.85
+            bright.toValue = 0.3
+            bright.duration = 1.0
+            aura.add(bright, forKey: "breath")
+            shell.opacity = 1.0
+            stopShell()
+            core.opacity = 0.95
+            core.removeAnimation(forKey: "coreSpin")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                 guard let self = self, self.state == .verified else { return }
                 self.ring.removeAllAnimations()
@@ -463,6 +853,24 @@ final class TriangleView: NSView {
             tri.fillColor = NSColor(calibratedRed: 0.45, green: 0.08, blue: 0.08, alpha: 1).cgColor
             tri.shadowOpacity = 0.2
             _ = animateBlocked
+            alertMark.isHidden = false
+            layoutAlert()
+            if !reduceMotion {
+                let blink = CABasicAnimation(keyPath: "opacity")
+                blink.fromValue = 1
+                blink.toValue = 0.25
+                blink.duration = 0.55
+                blink.autoreverses = true
+                blink.repeatCount = .greatestFiniteMagnitude
+                alertMark.add(blink, forKey: "blink")
+                aura.isHidden = false
+                aura.strokeColor = NSColor(calibratedRed: 1, green: 0.1, blue: 0.08, alpha: 0.45).cgColor
+                startAuraBreath()
+            }
+            shell.opacity = 0.25
+            stopShell()
+            core.opacity = 0.35
+            core.removeAnimation(forKey: "coreSpin")
         }
     }
 
@@ -477,7 +885,10 @@ final class TriangleView: NSView {
     private func center() -> NSPoint { NSPoint(x: bounds.midX, y: bounds.midY) }
 
     private func layoutBracket() {
-        guard let f = bracketFrame else { return }
+        guard let f = bracketFrame else {
+            tether.isHidden = true
+            return
+        }
         let c = center()
         let r = NSRect(x: c.x + (f.midX - c.x) - f.width / 2 - 4,
                        y: c.y + (f.midY - c.y) - f.height / 2 - 4,
@@ -491,6 +902,37 @@ final class TriangleView: NSView {
         p.move(to: NSPoint(x: r.maxX - len, y: r.maxY));        p.line(to: NSPoint(x: r.maxX, y: r.maxY));        p.line(to: NSPoint(x: r.maxX, y: r.maxY - len))
         bracket.path = p.cgPath
         bracket.isHidden = (state == .idle)
+        layoutTether()
+    }
+
+    /// Dashed line from the triangle to whatever it's locked on — a leash.
+    private func layoutTether() {
+        guard let f = bracketFrame, state == .lock, !reduceMotion else {
+            tether.isHidden = true
+            return
+        }
+        let c = center()
+        let mid = NSPoint(x: f.midX, y: f.midY)
+        // don't draw through the triangle body
+        let dx = mid.x - c.x, dy = mid.y - c.y
+        let len = hypot(dx, dy)
+        guard len > 18 else { tether.isHidden = true; return }
+        let ux = dx / len, uy = dy / len
+        let start = NSPoint(x: c.x + ux * 12, y: c.y + uy * 12)
+        let p = NSBezierPath()
+        p.move(to: start)
+        p.line(to: mid)
+        tether.path = p.cgPath
+        tether.isHidden = false
+        if tether.animation(forKey: "dash") == nil {
+            let dash = CABasicAnimation(keyPath: "lineDashPhase")
+            dash.fromValue = 7
+            dash.toValue = 0
+            dash.duration = 0.55
+            dash.repeatCount = .greatestFiniteMagnitude
+            dash.timingFunction = .init(name: .linear)
+            tether.add(dash, forKey: "dash")
+        }
     }
 
     private func layoutTraj() {
@@ -513,6 +955,12 @@ final class TriangleView: NSView {
         check.position = center()
         check.bounds = NSRect(x: 0, y: 0, width: 16, height: 16)
         check.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+    }
+
+    private func layoutAlert() {
+        alertMark.position = center()
+        alertMark.bounds = NSRect(x: 0, y: 0, width: 14, height: 18)
+        alertMark.anchorPoint = CGPoint(x: 0.5, y: 0.5)
     }
 
     private func layoutDots() {
@@ -578,6 +1026,8 @@ final class OverlayController {
 
     var agentActive = false
     var detached = false
+    private var lastTrailAt = Date.distantPast
+    private var prevPos: NSPoint? = nil
     var execTarget: CGPoint? {
         didSet {
             guard let t = execTarget else { triView.trajEnd = nil; return }
@@ -607,11 +1057,22 @@ final class OverlayController {
         let tx = m.x, ty = m.y
         let dt: CGFloat = 1.0 / 60.0
         let k = 1 - exp(-dt * 14)
+        let prev = prevPos ?? pos
         pos.x += (tx - pos.x) * k
         pos.y += (ty - pos.y) * k
+        prevPos = pos
         angle += (tiltAngle(dx: tx - (pos.x - (tx - (tx - pos.x)) * 0), dy: 0) - angle) * k
         if !detached {
             panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
+            let vx = pos.x - prev.x, vy = pos.y - prev.y
+            let speed = hypot(vx, vy)
+            if speed > 0.8 {
+                triView.setLean(atan2(vy, vx) - .pi / 2)
+                if speed > 2.2, Date().timeIntervalSince(lastTrailAt) > 0.05 {
+                    lastTrailAt = Date()
+                    triView.spawnTrail()
+                }
+            }
         }
 
         // hover target acquisition (throttled) — paused while the agent drives
@@ -1279,16 +1740,18 @@ final class LensController: NSObject, NSTextFieldDelegate {
         }
     }
 
-    func replayChore(_ rawName: String) {
+    func replayChore(_ rawName: String, completion: ((Bool) -> Void)? = nil) {
         let name = rawName.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !isRecording else { respond("RECORDING — say stop first", .blocked); return }
+        guard !isRecording else { respond("RECORDING — say stop first", .blocked); completion?(false); return }
         guard let c = ChoreStore.load(name) else {
-            if MacroStore.list().contains(name) { replayMacro(name); return }
+            if MacroStore.list().contains(name) { replayMacro(name); completion?(true); return }
             respond("NO CHORE '\(name)' — chores to list · record <name> to teach", .blocked)
+            completion?(false)
             return
         }
         guard AXIsProcessTrusted() else {
             respond("PERMISSION REQUIRED — Accessibility to replay", .blocked)
+            completion?(false)
             return
         }
         isReplaying = true
@@ -1321,8 +1784,10 @@ final class LensController: NSObject, NSTextFieldDelegate {
                 agentSteps.append("✖ CHORE FAILED at step \(idx + 1)")
             }
             self.rebuildSteps(); self.resize(agentSteps.count)
-            self.respond(fail == 0 ? "CHORE VERIFIED — \(c.name)" : "CHORE FAILED — see receipts",
-                         fail == 0 ? .verified : .blocked)
+            let passed = fail == 0
+            self.respond(passed ? "CHORE VERIFIED — \(c.name)" : "CHORE FAILED — see receipts",
+                         passed ? .verified : .blocked)
+            completion?(passed)
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { State.shared.set(.idle) }
         }
         func runStep(_ i: Int) {
@@ -1572,6 +2037,9 @@ final class LensController: NSObject, NSTextFieldDelegate {
             "agent <task> — AI drives the cursor (needs Accessibility)",
             "record <name> — TEACH a chore · stop — save with AI intent",
             "replay <name> / do <name> — run learned chore · chores — list",
+            "chain a, b, c — run chores in sequence",
+            "every day at 9am do <chore> — SCHEDULE a mission · schedules · unschedule <x>",
+            "watch downloads — auto-file new files · watches · unwatch <x>",
             "teach <name> <intent> — rewrite what the chore means",
             "clip / clip <query> — clipboard inbox · esc dismiss · ⌘P pin"
         ]
@@ -1600,7 +2068,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
         let q = text.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return }
         if agentBusy || isRecording { respond("BUSY — finish current task first", .blocked); return }
-        State.shared.set(.reasoning, "thinking · \(agentModel)")
+        State.shared.set(.reasoning, "thinking · \(agentChatModel)")
         for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
         stack.addArrangedSubview(chatRow("▸ \(q)"))
         chatHistory.append(["role": "user", "content": q])
@@ -1612,7 +2080,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
             chatHistory.append(["role": "assistant", "content": reply])
             self.stack.addArrangedSubview(self.chatRow("◂ \(reply)"))
             self.resize(self.stack.arrangedSubviews.count)
-            State.shared.set(.verified, "REPLY · \(agentModel)")
+            State.shared.set(.verified, "REPLY · \(agentChatModel)")
         }
     }
 
@@ -1667,6 +2135,68 @@ final class LensController: NSObject, NSTextFieldDelegate {
         }
         if low == "chores" || low == "chore" || low == "list chores" || low == "skills" {
             listChores()
+            return
+        }
+        // — automation: schedule / watch / chain —
+        if low.hasPrefix("chain ") {
+            chainChores(String(text.dropFirst(6)))
+            return
+        }
+        if low.hasPrefix("schedule ") || low.hasPrefix("every ") {
+            let reply = ScheduleEngine.add(text)
+            respond(reply, reply.hasPrefix("SCHEDULED") ? .verified : .blocked)
+            if reply.hasPrefix("SCHEDULED") { bridgeLog("schedule", reply) }
+            return
+        }
+        if low == "schedules" || low == "schedule" || low == "missions" {
+            let lines = ScheduleEngine.listLines()
+            agentSteps = ["SCHEDULED MISSIONS"] + lines
+            rebuildStepsForSchedule()
+            State.shared.set(.verified, "SCHEDULES — \(ScheduleEngine.items.count)")
+            return
+        }
+        if low.hasPrefix("unschedule ") {
+            let reply = ScheduleEngine.remove(String(text.dropFirst(11)))
+            respond(reply, reply.hasPrefix("UNSCHEDULED") ? .verified : .blocked)
+            return
+        }
+        if low.hasPrefix("watch ") {
+            let arg = String(text.dropFirst(6)).trimmingCharacters(in: .whitespaces).lowercased()
+            let preset: String
+            switch arg {
+            case "downloads":
+                preset = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].path
+            case "desktop":
+                preset = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0].path
+            case "documents":
+                preset = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].path
+            case "pictures":
+                preset = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0].path
+            default:
+                preset = (arg as NSString).expandingTildeInPath
+            }
+            let reply = FolderWatcher.add(preset)
+            respond(reply, reply.hasPrefix("WATCHING") ? .verified : .blocked)
+            if reply.hasPrefix("WATCHING") { bridgeLog("watch", reply) }
+            return
+        }
+        if low == "watches" || low == "watch" {
+            let lines = FolderWatcher.watches.map { "👁 \($0.path)" }
+            agentSteps = lines.isEmpty ? ["NO FOLDERS WATCHED — watch downloads"] : ["WATCHED FOLDERS"] + lines
+            rebuildStepsForSchedule()
+            State.shared.set(.verified, "WATCHES — \(FolderWatcher.watches.count)")
+            return
+        }
+        if low.hasPrefix("unwatch ") {
+            let arg = String(text.dropFirst(8)).trimmingCharacters(in: .whitespaces).lowercased()
+            if arg == "all" {
+                for w in FolderWatcher.watches { FolderWatcher.disarm(w.path) }
+                respond("UNWATCHED — all folders", .verified)
+            } else {
+                let p = (arg as NSString).expandingTildeInPath
+                FolderWatcher.disarm(p)
+                respond("UNWATCHED — \(p)", .verified)
+            }
             return
         }
         if low.hasPrefix("teach ") {
@@ -1807,7 +2337,18 @@ final class LensController: NSObject, NSTextFieldDelegate {
             return
         }
 
-        respond("NO MATCH — try: help · run <cmd> · find <file> · agent <task> · record <chore>", .blocked)
+        // — no deterministic match: figure it out —
+        // questions get answered, tasks get executed
+        let q = low.contains("?") || low.hasPrefix("what") || low.hasPrefix("why")
+            || low.hasPrefix("how") || low.hasPrefix("who") || low.hasPrefix("when")
+            || low.hasPrefix("explain") || low.hasPrefix("tell me") || low.hasPrefix("can you")
+            || low.hasPrefix("does ") || low.hasPrefix("is ") || low.hasPrefix("are ")
+        if q {
+            quickChat(text)
+        } else {
+            State.shared.set(.reasoning, "figuring it out…")
+            runAgent(text)
+        }
     }
 
     private func openURL(_ url: URL, label: String) {
@@ -1961,7 +2502,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
 
     private func skillRename(_ args: String) {
         // split on " to " or " as " (natural phrasing)
-        let lower = args.lowercased()
+        _ = args.lowercased()
         var sepRange: Range<String.Index>?
         if let r = args.range(of: " to ", options: .caseInsensitive) { sepRange = r }
         else if let r = args.range(of: " as ", options: .caseInsensitive) { sepRange = r }
@@ -2382,6 +2923,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installGlobalMonitor()
         buildStatusBar()
         pickModel()
+        ScheduleEngine.start()
+        FolderWatcher.startAll()
         // starts with the triangle every boot
         if !LoginItem.isEnabled {
             do {
@@ -2473,7 +3016,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                   let models = j["models"] as? [[String: Any]] else { return }
             let names = models.compactMap { $0["name"] as? String }
             guard let best = names.first(where: { $0.contains("3b") }) ?? names.first else { return }
-            DispatchQueue.main.async { agentModel = best; LoginItem.log("agent model: \(best)") }
+            let chatBest = names.first(where: { $0.contains("1b") }) ?? best
+            DispatchQueue.main.async {
+                agentModel = best
+                agentChatModel = chatBest
+                LoginItem.log("agent model: \(best) · chat model: \(chatBest)")
+                warmModel(best)
+                if chatBest != best { warmModel(chatBest) }
+            }
         }.resume()
     }
     @objc private func toggleTri() {
@@ -2511,6 +3061,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - Agent Engine (Ollama drives the cursor)
 
 @MainActor var agentModel = "llama3.2:3b"
+@MainActor var agentChatModel = "llama3.2:1b"
 @MainActor var agentBusy = false
 @MainActor private var agentCancelled = false
 private var agentHistory: [[String: Any]] = []
@@ -2680,6 +3231,342 @@ enum ChoreStore {
     static func load(_ name: String) -> Chore? {
         guard let d = try? Data(contentsOf: file(name)) else { return nil }
         return try? JSONDecoder().decode(Chore.self, from: d)
+    }
+}
+
+// MARK: - Bridge (triangle → NEXUS app event stream)
+
+@MainActor func bridgeLog(_ kind: String, _ text: String) {
+    let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("Nexus", isDirectory: true)
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let entry: [String: Any] = [
+        "ts": Date().timeIntervalSince1970,
+        "source": "triangle",
+        "kind": kind,
+        "text": text
+    ]
+    guard let data = try? JSONSerialization.data(withJSONObject: entry),
+          let line = String(data: data, encoding: .utf8) else { return }
+    let url = dir.appendingPathComponent("bridge.jsonl")
+    if let handle = try? FileHandle(forWritingTo: url) {
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: (line + "\n").data(using: .utf8)!)
+    } else {
+        try? (line + "\n").data(using: .utf8)!.write(to: url)
+    }
+}
+
+// MARK: - Scheduled missions
+
+struct SchedMission: Codable {
+    var id: String
+    var chore: String
+    var weekday: Int      // 0 = every day, 1 = Sunday … 7 = Saturday
+    var hour: Int
+    var minute: Int
+    var lastFired: String // yyyyMMdd of last fire
+}
+
+enum ScheduleStore {
+    static var file: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/schedules.json")
+    }
+    static func load() -> [SchedMission] {
+        guard let d = try? Data(contentsOf: file) else { return [] }
+        return (try? JSONDecoder().decode([SchedMission].self, from: d)) ?? []
+    }
+    static func save(_ items: [SchedMission]) {
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try? enc.encode(items).write(to: file)
+    }
+}
+
+@MainActor enum ScheduleEngine {
+    static var timer: Timer?
+    static var items: [SchedMission] = ScheduleStore.load()
+
+    static func start() {
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in tick() }
+        RunLoop.main.add(timer!, forMode: .common)
+        if !items.isEmpty { State.shared.lens?.respond("SCHEDULES ARMED — \(items.count) missions", .verified) }
+    }
+
+    static func parse(_ text: String) -> SchedMission? {
+        let low = text.lowercased()
+        var weekday = 0
+        let days = ["sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4,
+                    "thursday": 5, "friday": 6, "saturday": 7]
+        for (name, num) in days where low.contains(name) { weekday = num }
+        var hour = -1, minute = 0
+        let ampmRange = low.range(of: #"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#, options: .regularExpression)
+        let milRange = low.range(of: #"\b(\d{1,2}):(\d{2})\b"#, options: .regularExpression)
+        if let r = ampmRange {
+            let s = String(low[r])
+            let hourPart = s.prefix(while: { $0.isNumber })
+            hour = Int(hourPart) ?? -1
+            if s.contains("pm"), hour >= 0, hour < 12 { hour = hour + 12 }
+            if s.contains("am"), hour == 12 { hour = 0 }
+            if let colon = s.firstIndex(of: ":"),
+               let m = Int(s[s.index(after: colon)..<s.index(s.endIndex, offsetBy: -2)]) {
+                minute = m
+            }
+        } else if let r = milRange {
+            let parts = low[r].split(separator: ":")
+            hour = Int(parts[0]) ?? -1
+            minute = Int(parts[1]) ?? 0
+        }
+        guard (0...23).contains(hour) else { return nil }
+        var chore = ""
+        if let r = text.range(of: #"\b(do|run|replay)\s+"#, options: [.regularExpression, .caseInsensitive]) {
+            chore = String(text[r.upperBound...]).trimmingCharacters(in: .whitespaces)
+        }
+        chore = chore.trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
+        guard !chore.isEmpty else { return nil }
+        return SchedMission(id: UUID().uuidString.prefix(8).description,
+                            chore: chore, weekday: weekday,
+                            hour: hour, minute: minute, lastFired: "")
+    }
+
+    static func add(_ text: String) -> String {
+        guard let m = parse(text) else {
+            return "COULD NOT PARSE — try: every day at 9am do coffee"
+        }
+        items.append(m)
+        ScheduleStore.save(items)
+        let days = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        let when = m.weekday == 0 ? "daily" : days[m.weekday]
+        return "SCHEDULED — “\(m.chore)” \(when) at \(String(format: "%02d:%02d", m.hour, m.minute))"
+    }
+
+    static func listLines() -> [String] {
+        guard !items.isEmpty else { return ["NO SCHEDULED MISSIONS"] }
+        let days = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        return items.map { "⏰ \($0.chore) — \($0.weekday == 0 ? "daily" : days[$0.weekday]) \(String(format: "%02d:%02d", $0.hour, $0.minute))" }
+    }
+
+    static func remove(_ query: String) -> String {
+        let q = query.lowercased()
+        let before = items.count
+        items.removeAll { $0.chore.lowercased().contains(q) || $0.id == q }
+        guard items.count != before else { return "NO SCHEDULE MATCHING '\(query)'" }
+        ScheduleStore.save(items)
+        return "UNSCHEDULED — \(before - items.count) removed"
+    }
+
+    private static func tick() {
+        let now = Date()
+        let cal = Calendar.current
+        let wd = cal.component(.weekday, from: now)
+        let h = cal.component(.hour, from: now)
+        let m = cal.component(.minute, from: now)
+        let key = Self.dayKey(now)
+        for i in items.indices where (items[i].weekday == 0 || items[i].weekday == wd)
+            && items[i].hour == h && items[i].minute == m
+            && items[i].lastFired != key {
+            items[i].lastFired = key
+            ScheduleStore.save(items)
+            let chore = items[i].chore
+            bridgeLog("schedule", "scheduled mission firing: \(chore)")
+            DispatchQueue.main.async {
+                agentSteps = ["⏰ SCHEDULED — \(chore)"]
+                State.shared.lens?.rebuildStepsForSchedule()
+                State.shared.lens?.replayChore(chore) { ok in
+                    bridgeLog("schedule", ok ? "scheduled '\(chore)' verified" : "scheduled '\(chore)' FAILED")
+                }
+            }
+        }
+    }
+
+    static func dayKey(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyyMMdd"
+        return f.string(from: d)
+    }
+}
+
+// MARK: - Hot-folder watcher
+
+struct FolderWatch: Codable {
+    var path: String
+    var lastSeenCount: Int
+}
+
+enum WatchStore {
+    static var file: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/watches.json")
+    }
+    static func load() -> [FolderWatch] {
+        guard let d = try? Data(contentsOf: file) else { return [] }
+        return (try? JSONDecoder().decode([FolderWatch].self, from: d)) ?? []
+    }
+    static func save(_ items: [FolderWatch]) {
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
+        try? enc.encode(items).write(to: file)
+    }
+}
+
+@MainActor enum FolderWatcher {
+    static var sources: [String: DispatchSourceFileSystemObject] = [:]
+    static var watches: [FolderWatch] = WatchStore.load()
+
+    static func startAll() {
+        for w in watches { arm(w.path) }
+        if !watches.isEmpty { State.shared.lens?.respond("WATCHING — \(watches.count) folders", .verified) }
+    }
+
+    static func arm(_ path: String) {
+        guard sources[path] == nil else { return }
+        let fd = open(path, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let src = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: .write, queue: .main)
+        src.setEventHandler { [path] in poll(path) }
+        src.setCancelHandler { close(fd) }
+        src.resume()
+        sources[path] = src
+        if let i = watches.firstIndex(where: { $0.path == path }) {
+            watches[i].lastSeenCount = (try? FileManager.default.contentsOfDirectory(atPath: path))?.count ?? 0
+        } else {
+            let count = (try? FileManager.default.contentsOfDirectory(atPath: path))?.count ?? 0
+            watches.append(FolderWatch(path: path, lastSeenCount: count))
+        }
+        WatchStore.save(watches)
+    }
+
+    static func disarm(_ path: String) {
+        sources[path]?.cancel()
+        sources[path] = nil
+        watches.removeAll { $0.path == path }
+        WatchStore.save(watches)
+    }
+
+    static func add(_ rawPath: String) -> String {
+        let p = (rawPath as NSString).expandingTildeInPath
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: p, isDirectory: &isDir), isDir.boolValue else {
+            return "NOT A FOLDER — \(p)"
+        }
+        guard !watches.contains(where: { $0.path == p }) else { return "ALREADY WATCHING — \(p)" }
+        arm(p)
+        return "WATCHING — \((p as NSString).lastPathComponent) · new files get auto-filed"
+    }
+
+    private static func poll(_ path: String) {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(atPath: path) else { return }
+        let current = items.filter { !$0.hasPrefix(".") }
+        guard let i = watches.firstIndex(where: { $0.path == path }) else { return }
+        let delta = current.count - watches[i].lastSeenCount
+        guard delta > 0 else { return }
+        watches[i].lastSeenCount = current.count
+        WatchStore.save(watches)
+        // only react to creations, not deletions
+        let newFiles = current.filter { name in
+            var isDir: ObjCBool = false
+            let full = path + "/" + name
+            return fm.fileExists(atPath: full, isDirectory: &isDir) && !isDir.boolValue
+        }
+        guard let newest = newFiles.last else { return }
+        // small settle delay so the file finishes writing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { classify(path, newest) }
+    }
+
+    private static func classify(_ dir: String, _ filename: String) {
+        let full = dir + "/" + filename
+        guard FileManager.default.fileExists(atPath: full) else { return }
+        let ext = (filename as NSString).pathExtension.lowercased()
+        let bucket: String
+        switch ext {
+        case "png", "jpg", "jpeg", "heic", "gif", "tiff", "bmp", "webp": bucket = "Images"
+        case "pdf", "doc", "docx", "txt", "md", "rtf", "pages", "csv", "xlsx": bucket = "Documents"
+        case "zip", "tar", "gz", "dmg", "7z", "rar": bucket = "Archives"
+        case "mp4", "mov", "avi", "mkv", "mp3", "wav", "m4a": bucket = "Media"
+        case "swift", "py", "js", "ts", "json", "html", "css", "sh", "c", "cpp", "h", "rs", "go": bucket = "Code"
+        default: bucket = "Other"
+        }
+        let dest = "\(dir)/\(bucket)"
+        try? FileManager.default.createDirectory(atPath: dest, withIntermediateDirectories: true)
+        var target = "\(dest)/\(filename)"
+        if FileManager.default.fileExists(atPath: target) {
+            target = "\(dest)/\(Date().timeIntervalSince1970)-\(filename)"
+        }
+        do {
+            try FileManager.default.moveItem(atPath: full, toPath: target)
+            bridgeLog("watch", "filed \(filename) → \(bucket)")
+            agentSteps.append("📁 \(filename) → \(bucket)")
+            State.shared.lens?.trimStepsForWatch()
+            State.shared.lens?.rebuildStepsForSchedule()
+            State.shared.set(.verified, "FILED — \(filename) → \(bucket)")
+        } catch {
+            bridgeLog("watch", "filed FAILED \(filename) — \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Chore chaining
+
+extension LensController {
+    func chainChores(_ raw: String) {
+        let names = raw.split(whereSeparator: { $0 == "," || $0 == ";" })
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            .filter { !$0.isEmpty }
+        guard names.count >= 2 else {
+            respond("USAGE — chain a, b, c", .blocked); return
+        }
+        guard AXIsProcessTrusted() else {
+            respond("PERMISSION REQUIRED — Accessibility to chain", .blocked); return
+        }
+        agentSteps = ["⛓ CHAIN — \(names.joined(separator: " → "))"]
+        rebuildStepsForSchedule()
+        bridgeLog("chain", "chain start: \(names.joined(separator: " → "))")
+        runChainStep(names, 0, [])
+    }
+
+    private func runChainStep(_ names: [String], _ i: Int, _ results: [String]) {
+        guard i < names.count else {
+            let ok = results.filter { $0.hasPrefix("✓") }.count
+            agentSteps = ["⛓ CHAIN RECEIPTS"] + results + ["✓ CHAIN VERIFIED — \(ok)/\(names.count)"]
+            rebuildStepsForSchedule()
+            respond("CHAIN VERIFIED — \(ok)/\(names.count) chores", .verified)
+            bridgeLog("chain", "chain verified \(ok)/\(names.count)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { State.shared.set(.idle) }
+            return
+        }
+        let name = names[i]
+        agentSteps.append("▶ \(name)")
+        rebuildStepsForSchedule()
+        State.shared.set(.executing, "chain \(i + 1)/\(names.count): \(name)")
+        replayChore(name) { [weak self] ok in
+            guard let self = self else { return }
+            let mark = ok ? "✓" : "✖"
+            var r = results; r.append("\(mark) \(name)")
+            if ok {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    self.runChainStep(names, i + 1, r)
+                }
+            } else {
+                agentSteps.append("✖ CHAIN BROKE at \(name)")
+                self.rebuildStepsForSchedule()
+                self.respond("CHAIN FAILED at \(name) — earlier steps verified", .blocked)
+                bridgeLog("chain", "chain failed at \(name)")
+            }
+        }
+    }
+
+    // lightweight UI helpers shared by schedule/chain/watch (public wrappers
+    // around the private rebuildSteps/trimSteps used elsewhere)
+    func rebuildStepsForSchedule() {
+        for v in stack.arrangedSubviews { stack.removeArrangedSubview(v); v.removeFromSuperview() }
+        for step in agentSteps { stack.addArrangedSubview(stepRow(step)) }
+        resize(agentSteps.count)
+    }
+    func trimStepsForWatch() {
+        if agentSteps.count > 8 { agentSteps.removeFirst(agentSteps.count - 8) }
     }
 }
 
@@ -2938,6 +3825,34 @@ private let agentTools: [[String: Any]] = [
                        "required": ["app"]]
     ]],
     ["type": "function", "function": [
+        "name": "find",
+        "description": "Search the disk for a file or folder by name/query. Returns ranked matches with paths.",
+        "parameters": ["type": "object",
+                       "properties": ["query": ["type": "string"]],
+                       "required": ["query"]]
+    ]],
+    ["type": "function", "function": [
+        "name": "open_path",
+        "description": "Open a file or folder (resolves natural language like 'the pdf on my desktop'). Use for opening documents, not apps.",
+        "parameters": ["type": "object",
+                       "properties": ["path": ["type": "string"]],
+                       "required": ["path"]]
+    ]],
+    ["type": "function", "function": [
+        "name": "run_shell",
+        "description": "Run a shell command and get stdout + real exit code. Use for anything scriptable (screenshot, eject, brew, defaults, file ops).",
+        "parameters": ["type": "object",
+                       "properties": ["cmd": ["type": "string"]],
+                       "required": ["cmd"]]
+    ]],
+    ["type": "function", "function": [
+        "name": "wait",
+        "description": "Pause briefly for a UI to settle. Only when an app is clearly still loading.",
+        "parameters": ["type": "object",
+                       "properties": ["ms": ["type": "number"]],
+                       "required": []]
+    ]],
+    ["type": "function", "function": [
         "name": "done",
         "description": "Call when the task is complete. Give a one-line verified summary.",
         "parameters": ["type": "object",
@@ -2949,41 +3864,56 @@ private let agentTools: [[String: Any]] = [
 private func agentSystemPrompt() -> String {
     let s = NSScreen.main?.frame.size ?? NSSize(width: 1440, height: 900)
     return """
-    You are NEXUS, a red-triangle macOS agent. You control the computer cursor directly through tools.
+    You are NEXUS, an autonomous macOS agent. You figure out HOW to complete the task — nobody will guide you.
     Screen: \(Int(s.width)) x \(Int(s.height)), origin top-left.
 
-    Workflow:
-    1. screen() lists the front app's interactive elements with coordinates — call it first.
-    2. Pick the target, move(x,y) to its CENTER, look() to verify, then click().
-    3. Use front(app) to focus an app before clicking inside it. find(query) searches files.
-    4. Prefer keyboard shortcuts (key tool) over mouse hunting when one exists.
+    How to work:
+    1. Think before acting: pick the shortest reliable path (keyboard shortcut > direct click > typing).
+    2. UI tasks: screen() to see elements, move(x,y) to the CENTER, look() to verify, click(). After any click/type that should change state, screen() or look() to CONFIRM it worked — then adapt.
+    3. File/app tasks: find(query), open_path(path), front(app), or run_shell(cmd) — shell gets real exit codes.
+    4. If a click had no effect, do NOT repeat it: re-scan with screen() and try a different element or a keyboard shortcut.
 
     Rules:
-    - Call exactly ONE tool at a time. After each call you receive the result.
-    - Never ask questions. Act. If blocked after 3 attempts, call done() describing the failure honestly.
-    - Call done(summary) when finished. Keep summaries under 80 characters.
+    - Call exactly ONE tool per turn. You receive each result.
+    - Never ask questions. Never give up after one failure — try another approach (max 3 per sub-goal).
+    - Call done(summary) only when you have verified the task is actually complete.
+    - Summaries under 80 characters, include the proof (e.g. "Notes open, text 'hello' typed").
     """
 }
 
 @MainActor private func askOllama(_ msgs: [[String: Any]]? = nil, chat: Bool = false, _ done: @escaping ([String: Any]?, Error?) -> Void) {
     guard let url = URL(string: "http://localhost:11434/api/chat") else { done(nil, nil); return }
     var body: [String: Any] = [
-        "model": agentModel,
+        "model": chat ? agentChatModel : agentModel,
         "messages": msgs ?? agentHistory,
         "stream": false,
-        "options": ["temperature": chat ? 0.7 : 0.2, "num_predict": chat ? 400 : 200]
+        "keep_alive": -1,
+        "options": ["temperature": chat ? 0.7 : 0.15, "num_predict": chat ? 256 : 96, "top_p": 0.9]
     ]
     if !chat { body["tools"] = agentTools }
     var req = URLRequest(url: url)
     req.httpMethod = "POST"
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    req.timeoutInterval = 120
+    req.timeoutInterval = 45
     req.httpBody = try? JSONSerialization.data(withJSONObject: body)
     URLSession.shared.dataTask(with: req) { data, _, err in
         var json: [String: Any]?
         if let d = data, let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] { json = j }
         DispatchQueue.main.async { done(json, err) }
     }.resume()
+}
+
+/// Fire a tokenless request so the model loads into RAM at boot, not on the first ask.
+@MainActor private func warmModel(_ name: String) {
+    guard let url = URL(string: "http://localhost:11434/api/generate") else { return }
+    var req = URLRequest(url: url)
+    req.httpMethod = "POST"
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    req.timeoutInterval = 120
+    req.httpBody = try? JSONSerialization.data(withJSONObject: [
+        "model": name, "prompt": "", "stream": false, "keep_alive": -1
+    ])
+    URLSession.shared.dataTask(with: req).resume()
 }
 
 // MARK: synthetic input (requires Accessibility)
@@ -3158,7 +4088,7 @@ extension LensController {
                 agentSteps.append("pre-open \(name)")
                 trimSteps()
                 rebuildSteps()
-                preOpenDelay = 0.8
+                preOpenDelay = 0.45
             }
         }
         agentHistory = [
@@ -3172,8 +4102,8 @@ extension LensController {
 
     private func agentTurn() {
         guard !agentCancelled else { return }
-        if agentHistory.count >= 26 {
-            agentFail("STEP LIMIT REACHED (12 tool calls) — refine the task")
+        if agentHistory.count >= 40 {
+            agentFail("STEP LIMIT REACHED (19 tool calls) — refine the task")
             return
         }
         State.shared.set(.reasoning, "agent thinking · step \(agentHistory.count / 2)")
@@ -3210,8 +4140,8 @@ extension LensController {
                     }
                     if agentNudges < 2 {
                         agentNudges += 1
-                        agentHistory.append(["role": "system", "content": "Call exactly one tool from the provided list. Never answer with plain text. Tools: screen, front, move, click, type_text, key, scroll, look, find, done."])
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.agentTurn() }
+                        agentHistory.append(["role": "system", "content": "Call exactly one tool from the provided list. Never answer with plain text. Tools: screen, front, move, click, type_text, key, scroll, look, find, open_path, run_shell, wait, done."])
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.agentTurn() }
                         return
                     }
                 }
@@ -3234,33 +4164,37 @@ extension LensController {
             let x = Self.num(args["x"]), y = Self.num(args["y"])
             agentMoveMouse(to: CGPoint(x: x, y: y))
             result = "cursor → \(Int(x)),\(Int(y))"
-            settle = 0.15
+            settle = 0.08
         case "click":
             let button: CGMouseButton = (args["button"] as? String) == "right" ? .right : .left
             let count = Self.int(args["count"], 1)
             agentClick(button, count: count)
             reaction = "click"
             result = "clicked \(button == .right ? "right" : "left") x\(count) at \(Int(agentCursor.x)),\(Int(agentCursor.y))"
-            settle = 0.7
+            settle = 0.45
         case "type_text":
             let text = args["text"] as? String ?? ""
             agentType(text)
             reaction = "type"
             result = "typed \(text.count) chars"
-            settle = 0.4
+            settle = 0.28
         case "key":
             let combo = args["combo"] as? String ?? ""
             agentPressCombo(combo)
             reaction = "type"
             result = "key '\(combo)'"
-            settle = 0.5
+            settle = 0.32
         case "scroll":
             let dx = Self.int(args["dx"], 0), dy = Self.int(args["dy"], -300)
             agentScroll(dx: dx, dy: dy)
             reaction = "scroll"
             reactionDy = CGFloat(dy)
             result = "scroll \(dx),\(dy)"
-            settle = 0.5
+            settle = 0.3
+        case "wait":
+            let ms = Self.int(args["ms"], 300)
+            result = "waited \(ms)ms"
+            settle = Double(ms) / 1000.0
         case "look":
             var elRef: AXUIElement?
             let system = AXUIElementCreateSystemWide()
@@ -3280,11 +4214,11 @@ extension LensController {
             } else {
                 result = "unknown element"
             }
-            settle = 0.3
+            settle = 0.18
         case "screen":
             reaction = "scan"
             result = screenSnapshot()
-            settle = 0.8
+            settle = 0.55
         case "front":
             let app = (args["app"] as? String) ?? ""
             if let (name, url) = matchApp("open \(app)") {
@@ -3294,7 +4228,67 @@ extension LensController {
             } else {
                 result = "no app matching '\(app)'"
             }
-            settle = 0.7
+            settle = 0.45
+        case "find":
+            let q = (args["query"] as? String) ?? (args["q"] as? String) ?? ""
+            State.shared.set(.executing, "index search")
+            agentSteps.append("find → '\(q)'")
+            trimSteps()
+            rebuildSteps()
+            searcher.run(q) { rows in
+                let names = rows.prefix(5).map { $0.name }.joined(separator: ", ")
+                let paths = rows.prefix(3).map { $0.url.path }.joined(separator: " | ")
+                agentHistory.append(["role": "tool", "content": "\(rows.count) results: \(names) · paths: \(paths)"])
+                agentSteps.append("find → \(rows.count) results")
+                self.trimSteps()
+                self.rebuildSteps()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.agentTurn() }
+            }
+            return
+        case "open_path":
+            let raw = (args["path"] as? String) ?? ""
+            let p = resolvePath(raw)
+            if FileManager.default.fileExists(atPath: p) {
+                let ok = NSWorkspace.shared.open(URL(fileURLWithPath: p))
+                reaction = "front"
+                result = ok ? "opened \((p as NSString).lastPathComponent)" : "open failed for \(p)"
+            } else {
+                result = "no file at '\(raw)' (resolved \(p)) — try find first"
+            }
+            settle = 0.45
+        case "run_shell":
+            let cmd = (args["cmd"] as? String) ?? ""
+            agentSteps.append("$ \(String(cmd.prefix(60)))")
+            trimSteps()
+            rebuildSteps()
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            proc.arguments = ["-c", cmd]
+            let out = Pipe()
+            proc.standardOutput = out
+            proc.standardError = out
+            do {
+                let sem = DispatchSemaphore(value: 0)
+                proc.terminationHandler = { _ in sem.signal() }
+                try proc.run()
+                if sem.wait(timeout: .now() + 15) == .timedOut {
+                    proc.terminate()
+                    result = "shell timeout after 15s: \(cmd)"
+                    agentHistory.append(["role": "tool", "content": result])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.agentTurn() }
+                    return
+                }
+            } catch {
+                result = "shell error — \(error.localizedDescription)"
+                agentHistory.append(["role": "tool", "content": result])
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.agentTurn() }
+                return
+            }
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            var text = String(data: data, encoding: .utf8) ?? ""
+            if text.count > 900 { text = String(text.prefix(900)) + "…" }
+            result = "exit \(proc.terminationStatus)\n\(text)"
+            settle = 0.15
         case "done":
             let summary = args["summary"] as? String ?? "complete"
             self.agentFinish(summary)
@@ -3328,7 +4322,7 @@ extension LensController {
                 }
                 return
             } else {
-                result = "unknown tool '\(tool)' — valid: move, click, type_text, key, scroll, look, screen, front, done"
+                result = "unknown tool '\(tool)' — valid: move, click, type_text, key, scroll, look, screen, front, find, open_path, run_shell, wait, done"
             }
         }
         State.shared.set(.executing, tool)
@@ -3429,8 +4423,13 @@ extension LensController {
 // MARK: - Entry
 
 let app = NSApplication.shared
+enum AppDelegateHolder {
+    nonisolated(unsafe) static var delegate: AppDelegate?
+}
 MainActor.assumeIsolated {
-    app.delegate = AppDelegate()
+    let delegate = AppDelegate()   // strong ref — NSApplication keeps delegate weakly
+    AppDelegateHolder.delegate = delegate
+    app.delegate = delegate
     app.setActivationPolicy(.accessory)
     app.run()
 }

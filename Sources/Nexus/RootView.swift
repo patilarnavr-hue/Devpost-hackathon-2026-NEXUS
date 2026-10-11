@@ -7,6 +7,7 @@ struct RootView: View {
     @ObservedObject private var appState = AppState.shared
     @State private var selectedTab = 0
     @State private var showTalk = false
+    @State private var showGuide = !UserDefaults.standard.bool(forKey: "nexus.guideDone")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +54,13 @@ struct RootView: View {
             TalkView()
                 .environmentObject(engine)
         }
+        .overlay {
+            if showGuide, appState.phase == .running {
+                NEXUSGuide(onDone: { showGuide = false })
+                    .environmentObject(engine)
+                    .transition(.opacity)
+            }
+        }
         .onAppear {
             if CommandLine.arguments.contains("-talk") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
@@ -65,18 +73,94 @@ struct RootView: View {
 
 struct ContentView: View {
     let selectedTab: Int
+    @State private var lastTab = 0
+
+    private var forward: Bool { selectedTab >= lastTab }
 
     var body: some View {
-        switch selectedTab {
-        case 0: OverviewView()
-        case 1: WorkflowsView()
-        case 2: DashboardView()
-        case 3: MemoryView()
-        case 4: EventsView()
-        case 5: PermissionsView()
-        case 6: RoomsView()
-        case 7: SettingsView()
-        default: OverviewView()
+        ZStack {
+            content(selectedTab)
+                .id(selectedTab)
+                .transition(.asymmetric(
+                    insertion: .opacity
+                        .combined(with: .scale(scale: 0.985))
+                        .combined(with: .offset(x: forward ? 32 : -32)),
+                    removal: .opacity
+                        .combined(with: .scale(scale: 1.01))
+                ))
+        }
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: selectedTab)
+        .overlay(alignment: .top) {
+            TabScanWipe(id: selectedTab)
+        }
+        .onAppear { lastTab = selectedTab }
+        .onChange(of: selectedTab) { _, newVal in lastTab = newVal }
+    }
+
+    @ViewBuilder
+    private func content(_ tab: Int) -> some View {
+        switch tab {
+        case 0: OverviewView().withPaneEntrance()
+        case 1: WorkflowsView().withPaneEntrance()
+        case 2: DashboardView().withPaneEntrance()
+        case 3: MemoryView().withPaneEntrance()
+        case 4: EventsView().withPaneEntrance()
+        case 5: PermissionsView().withPaneEntrance()
+        case 6: RoomsView().withPaneEntrance()
+        case 7: SettingsView().withPaneEntrance()
+        default: OverviewView().withPaneEntrance()
+        }
+    }
+}
+
+// MARK: - Pane entrance: content eases up + fades as one surface
+
+private struct PaneEntrance: ViewModifier {
+    @State private var shown = false
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 10)
+            .onAppear {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func withPaneEntrance() -> some View { modifier(PaneEntrance()) }
+}
+
+// MARK: - Thin red scan that sweeps the pane on every tab switch
+
+private struct TabScanWipe: View {
+    let id: Int
+    @State private var phase: CGFloat = -80
+
+    var body: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(Palette.accent)
+                .frame(width: 72, height: 1.5)
+                .shadow(color: Palette.accent.opacity(0.9), radius: 7)
+                .offset(x: phase, y: 0)
+                .opacity(phase >= geo.size.width ? 0 : 1)
+                .onAppear { sweep(width: geo.size.width) }
+                .onChange(of: id) {
+                    phase = -80
+                    sweep(width: geo.size.width)
+                }
+        }
+        .allowsHitTesting(false)
+        .frame(height: 2)
+    }
+
+    private func sweep(width: CGFloat) {
+        withAnimation(.linear(duration: 0.45)) {
+            phase = width + 80
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            phase = -80
         }
     }
 }

@@ -27,7 +27,7 @@ struct CollabMember: Identifiable, Equatable {
 }
 
 final class CollabService: ObservableObject, @unchecked Sendable {
-    nonisolated(unsafe) static let shared = CollabService()
+    static let shared = CollabService()
 
     @Published var handle: String
     @Published var roomCode: String? = nil

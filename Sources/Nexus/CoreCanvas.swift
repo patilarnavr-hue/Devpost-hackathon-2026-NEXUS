@@ -33,12 +33,12 @@ struct CoreCanvas: View {
             if engine.verification == .passed { sealEnteredAt = Date() }
             if engine.verification == .failed || engine.state == .error { fractureEnteredAt = Date() }
         }
-        .onChange(of: engine.state) { newState in
+        .onChange(of: engine.state) { _, newState in
             stateEnteredAt = Date()
             if newState == .error { fractureEnteredAt = Date() }
             if newState == .success, engine.verification == .passed { sealEnteredAt = Date() }
         }
-        .onChange(of: engine.verification) { v in
+        .onChange(of: engine.verification) { _, v in
             switch v {
             case .passed:
                 sealEnteredAt = Date()
@@ -234,7 +234,7 @@ struct CoreCanvas: View {
             let text = objective.count > 46 ? String(objective.prefix(44)) + "…" : objective
             let boxW = min(w * 0.62, Double(text.count) * 6.6 + 56)
             let box = CGRect(x: cx - boxW / 2, y: goalY - 15, width: boxW, height: 34)
-            var boxPath = Path(roundedRect: box, cornerRadius: 4)
+            let boxPath = Path(roundedRect: box, cornerRadius: 4)
             ctx.stroke(boxPath, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
             ctx.draw(Text("GOAL").font(.system(size: 7, weight: .bold, design: .monospaced))
                         .foregroundColor(Palette.accent),
@@ -293,7 +293,7 @@ struct CoreCanvas: View {
                     docP.addLine(to: CGPoint(x: p.x + 1, y: p.y - 2.5))
                     ctx.stroke(docP, with: .color(Palette.accent.opacity(0.55 + fresh * 0.45)), lineWidth: 1.2)
                 case "file":
-                    var fp = Path(roundedRect: CGRect(x: p.x - 5, y: p.y - 3.5, width: 10, height: 7.5),
+                    let fp = Path(roundedRect: CGRect(x: p.x - 5, y: p.y - 3.5, width: 10, height: 7.5),
                                   cornerRadius: 1.5)
                     ctx.stroke(fp, with: .color(Palette.accent.opacity(0.5 + fresh * 0.5)), lineWidth: 1.2)
                 case "memory", "calendar":

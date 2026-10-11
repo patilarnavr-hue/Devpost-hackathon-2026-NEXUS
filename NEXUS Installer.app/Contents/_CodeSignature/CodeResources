@@ -4,6 +4,14 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/NexusTri.icns</key>
+		<data>
+		HKBdRYTjQCfDF6d9w7KgTQDqIBM=
+		</data>
+		<key>Resources/package/CONTRIBUTING.md</key>
+		<data>
+		0CVzym2kUBu0U6IfXcFcCtfQoWA=
+		</data>
 		<key>Resources/package/FixturePackage/Package.swift</key>
 		<data>
 		rtsvnh+AThWhX65l3mMZwfczgTQ=
@@ -16,9 +24,13 @@
 		<data>
 		+i/ASo3+mL/r/mml8RhaEyumg3U=
 		</data>
+		<key>Resources/package/LICENSE</key>
+		<data>
+		ywrSRw/efBIHYG22qo4pzCukpaU=
+		</data>
 		<key>Resources/package/NexusTriangle/main.swift</key>
 		<data>
-		Nnqipli2ZEKVV1ttbs/5Eb6CoNY=
+		zY8WMCoy8uQHEbf/ltXZSOgpDoc=
 		</data>
 		<key>Resources/package/Package.swift</key>
 		<data>
@@ -26,7 +38,7 @@
 		</data>
 		<key>Resources/package/README.md</key>
 		<data>
-		bBAIHhNsndStZ6MTpmeDIHnvCx0=
+		bJEJGluWbNB2T73FpJk5hNqgBGQ=
 		</data>
 		<key>Resources/package/Sources/Nexus/AppLifecycle.swift</key>
 		<data>
@@ -34,123 +46,139 @@
 		</data>
 		<key>Resources/package/Sources/Nexus/BootAnimationView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		aAI14J6W5nIyw0JFGlysScvfhhc=
 		</data>
 		<key>Resources/package/Sources/Nexus/ChatStore.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		I1WYX7Mwa4Vcl6oUKb5q+hZXqJE=
 		</data>
 		<key>Resources/package/Sources/Nexus/ChatTheme.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		pW/t62ZsKWgr9caZASCWd30kxAE=
+		</data>
+		<key>Resources/package/Sources/Nexus/CloseAnimationView.swift</key>
+		<data>
+		H0X0Hp4Lq4Z7eGXGIJhSMmOMnKU=
+		</data>
+		<key>Resources/package/Sources/Nexus/CollabService.swift</key>
+		<data>
+		GdinQ1scrLqNPWfEiYdb0M2Nifw=
 		</data>
 		<key>Resources/package/Sources/Nexus/CoreCanvas.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		FV5u/vYHIjaM8iXO724PXo4slF8=
 		</data>
 		<key>Resources/package/Sources/Nexus/DashboardView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		F1KyywlqM004nEnQbukHKgb/8+8=
 		</data>
 		<key>Resources/package/Sources/Nexus/EdgeLines.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		alwXxozbQ4v7EanYasfweZES2so=
 		</data>
 		<key>Resources/package/Sources/Nexus/EventsView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		LSbalpDIpKr/dTeEeUQNQeANi3U=
 		</data>
 		<key>Resources/package/Sources/Nexus/Executor.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		ipcDAGa4Wda6PEgcYd2M0ZM+gZE=
+		</data>
+		<key>Resources/package/Sources/Nexus/GuideView.swift</key>
+		<data>
+		ASmhistxz30g5+BD9eHQ8Mm/fDs=
 		</data>
 		<key>Resources/package/Sources/Nexus/IntentClassifier.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		PNMnTW+NvHF5UOX+mj6GJuYisnk=
 		</data>
 		<key>Resources/package/Sources/Nexus/MemoryStore.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		XwgXPPJ0xycsWO7yAxgSehF1ru0=
 		</data>
 		<key>Resources/package/Sources/Nexus/MemoryView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		oW1tuSwK+xNXcJwYTLBfg5nPR68=
 		</data>
 		<key>Resources/package/Sources/Nexus/Models.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		Hgoy29M9WsdoOpXugUB19GTKjKQ=
 		</data>
 		<key>Resources/package/Sources/Nexus/NEXUSApp.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		JT4ugnMKpZzi5mqM4UAY5g95kaM=
 		</data>
 		<key>Resources/package/Sources/Nexus/NexusEngine.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		5k7um6v2v9RwcsiKnZhrhEBfd5s=
 		</data>
 		<key>Resources/package/Sources/Nexus/NexusIdentity.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		OA+y7eQ3t3nI60F6PNGgS0mVFeE=
 		</data>
 		<key>Resources/package/Sources/Nexus/OllamaService.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		UvFBHmJ3aOJ9GBZuYES7WTeGLic=
 		</data>
 		<key>Resources/package/Sources/Nexus/OverviewView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		LywlvOgPACbR6B1zqpXYSmtJKlw=
 		</data>
 		<key>Resources/package/Sources/Nexus/Palette.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		qqqPhKfTqXEwGSu+nAffBljHgpw=
 		</data>
 		<key>Resources/package/Sources/Nexus/PermissionsView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		kgrF6j5V9ka2TQBMdeMny9OS3nE=
+		</data>
+		<key>Resources/package/Sources/Nexus/RoomsView.swift</key>
+		<data>
+		t0abxzht4S8mObhrFDpQZ6mqjvo=
 		</data>
 		<key>Resources/package/Sources/Nexus/RootView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		HLJIH9uzmTgE1dSAJ64qkeShdTc=
 		</data>
 		<key>Resources/package/Sources/Nexus/SettingsView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		5C98QOV8VNP4nLymHEYSJOdukiE=
 		</data>
 		<key>Resources/package/Sources/Nexus/TalkView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		jGE1hU/+tkZmsflSyl7Q05yHeWw=
 		</data>
 		<key>Resources/package/Sources/Nexus/Taskbar.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		1sEkPlJm7WFXykbvY4QcvrksiS8=
 		</data>
 		<key>Resources/package/Sources/Nexus/Verifier.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		94Ni2NfFZREDvg+/5gqS+D97iwg=
 		</data>
 		<key>Resources/package/Sources/Nexus/WorkflowsView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		ypSGunlapB2rcOGyVE3aakMAoQ0=
 		</data>
 		<key>Resources/package/Sources/Nexus/WorldTransitionView.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		v5S6b5pelJANMj0sNGgdKjiTY0k=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallEngine.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		S5qyicpLb0xfnjsCFetiSuwoNZA=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallerApp.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		nLc0d3BDx20LB2CHK99wOlUgKEM=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/InstallerPanes.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		Kfha98QOliV/mR/rQ0iz3VPzw/U=
 		</data>
 		<key>Resources/package/Sources/NexusInstaller/PaneChrome.swift</key>
 		<data>
-		2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+		XUo1AJ3W6uK/rxn5aXS9DO6xUA4=
 		</data>
 		<key>Resources/package/install.sh</key>
 		<data>
@@ -158,11 +186,45 @@
 		</data>
 		<key>Resources/package/nexus-setup.sh</key>
 		<data>
-		nCC1a3igoYgHI7NQS3giFBD0K5Y=
+		De9iaYFL3j24U/qq+C5N7CyZ+Do=
+		</data>
+		<key>Resources/package/scripts/NexusTri.icns</key>
+		<data>
+		HKBdRYTjQCfDF6d9w7KgTQDqIBM=
+		</data>
+		<key>Resources/package/scripts/bootstrap.sh</key>
+		<data>
+		m+CypgWGs9flL32dc1NQEwdVJYw=
+		</data>
+		<key>Resources/package/scripts/make-icon.swift</key>
+		<data>
+		M7A+4K8A+bgiau84OYoAAa+Bo4A=
 		</data>
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/NexusTri.icns</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			HKBdRYTjQCfDF6d9w7KgTQDqIBM=
+			</data>
+			<key>hash2</key>
+			<data>
+			u+jSDNSUV6sIkCQwTbzdNitS8V0BA4RDKB1vwN3NN9s=
+			</data>
+		</dict>
+		<key>Resources/package/CONTRIBUTING.md</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			0CVzym2kUBu0U6IfXcFcCtfQoWA=
+			</data>
+			<key>hash2</key>
+			<data>
+			wafcV1uWCKfsAqt1TUsRwZkIYbmUudpoFXb44TKQWww=
+			</data>
+		</dict>
 		<key>Resources/package/FixturePackage/Package.swift</key>
 		<dict>
 			<key>hash</key>
@@ -196,15 +258,26 @@
 			0rzeV5pkjoU8LO+61xNMnTO+/pBd2vmt1agAaERA0Sw=
 			</data>
 		</dict>
+		<key>Resources/package/LICENSE</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			ywrSRw/efBIHYG22qo4pzCukpaU=
+			</data>
+			<key>hash2</key>
+			<data>
+			VKIVnDOF612JrgpKnpsg2MBrSJPzwCXNYRYZPB/LSSQ=
+			</data>
+		</dict>
 		<key>Resources/package/NexusTriangle/main.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			Nnqipli2ZEKVV1ttbs/5Eb6CoNY=
+			zY8WMCoy8uQHEbf/ltXZSOgpDoc=
 			</data>
 			<key>hash2</key>
 			<data>
-			PxSI3jg9FkFFvqZz7nb6/ssJmDUwcz6cYbCcoPNNhoQ=
+			RDlo7upauIylKYLeBbK8rhqvLjHtHlHpmxBb6L9SDZU=
 			</data>
 		</dict>
 		<key>Resources/package/Package.swift</key>
@@ -222,11 +295,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			bBAIHhNsndStZ6MTpmeDIHnvCx0=
+			bJEJGluWbNB2T73FpJk5hNqgBGQ=
 			</data>
 			<key>hash2</key>
 			<data>
-			pd0ipelLgkboTNQFXeiJsR71BRu9BFxAPA/upEVM7w4=
+			jGLHTThV1NWLbmLUowcr4GgHLKq0Ep72BfR3S9DI0f4=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/AppLifecycle.swift</key>
@@ -244,330 +317,374 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			aAI14J6W5nIyw0JFGlysScvfhhc=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			qtkPeIWstqy97ES3cW+9t7u9B+WOs31FTLBtVc4+sYo=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/ChatStore.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			I1WYX7Mwa4Vcl6oUKb5q+hZXqJE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			ADG3Dhr6vBG38sfwTmdaJryNTC/M/OmoXD8fqd1pcSA=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/ChatTheme.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			pW/t62ZsKWgr9caZASCWd30kxAE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			NygFEXLfM1P0Y4JY909b3m0NUzuetkIZE98yISrIryU=
+			</data>
+		</dict>
+		<key>Resources/package/Sources/Nexus/CloseAnimationView.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			H0X0Hp4Lq4Z7eGXGIJhSMmOMnKU=
+			</data>
+			<key>hash2</key>
+			<data>
+			uxSHz2YHJPHCIXJjk5i5AQS/TAFO0XVWSEy91tGDZps=
+			</data>
+		</dict>
+		<key>Resources/package/Sources/Nexus/CollabService.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			GdinQ1scrLqNPWfEiYdb0M2Nifw=
+			</data>
+			<key>hash2</key>
+			<data>
+			LGmFqDDm8QY/lQPxLTYkFTtd2xWFvtok4Vfok10dYLQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/CoreCanvas.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			FV5u/vYHIjaM8iXO724PXo4slF8=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			6KRT5E3lq20Aly7qaZLFFv+BY18Of/b5WtupwEuo8CA=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/DashboardView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			F1KyywlqM004nEnQbukHKgb/8+8=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			vqc2ZDAMK+KKdiE6uf1/mHceciCMTaK4OuKSf+8Z1Zk=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/EdgeLines.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			alwXxozbQ4v7EanYasfweZES2so=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			AiHzyR/oIaQAAasLyCYR6m6GB3MbHC4/orcAj8hTZPA=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/EventsView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			LSbalpDIpKr/dTeEeUQNQeANi3U=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			h1RQ3OvDNrZsLlBqt/qvIQlYVQfcvfKvDBnq+qAw86o=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/Executor.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			ipcDAGa4Wda6PEgcYd2M0ZM+gZE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			88DGliQ5E2pTbt7pxq3QptbL+Vk5lTe3w81wVEM+BQg=
+			</data>
+		</dict>
+		<key>Resources/package/Sources/Nexus/GuideView.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			ASmhistxz30g5+BD9eHQ8Mm/fDs=
+			</data>
+			<key>hash2</key>
+			<data>
+			xwzb8wrKTLAniDa3nb+yOcVo0RDHPOfIY6cTD9aeP7E=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/IntentClassifier.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			PNMnTW+NvHF5UOX+mj6GJuYisnk=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			Z2Tx1rP/wcMZMWQ5o0ZsIYy5Jdc9AxbpBeGr9ick1GQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/MemoryStore.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			XwgXPPJ0xycsWO7yAxgSehF1ru0=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			4O6mBqeurw8Xjrpepk+sfZZsxwyZse0UfzjIQ+BYc+w=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/MemoryView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			oW1tuSwK+xNXcJwYTLBfg5nPR68=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			tdYnOoH2H/Hp17EklVD41PI3naiNoOjvApwedEDciwk=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/Models.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			Hgoy29M9WsdoOpXugUB19GTKjKQ=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			+kFtpUZ1whc8Fg9hfl1fpexn9yboGp6F32ml6tVtlx0=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/NEXUSApp.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			JT4ugnMKpZzi5mqM4UAY5g95kaM=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			TlAADQYVdqNoaId+vSboQVKE7oOzxQfNIt7tOsFWP6Y=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/NexusEngine.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			5k7um6v2v9RwcsiKnZhrhEBfd5s=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			dbHA5jH6dtyd8w2PEB8+Hh2W7eKWcbdzOZcFB2Nubow=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/NexusIdentity.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			OA+y7eQ3t3nI60F6PNGgS0mVFeE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			nWzVqGEfvli6PCLVnBatII4lcYHoFVNGcc6Gn+5vZfs=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/OllamaService.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			UvFBHmJ3aOJ9GBZuYES7WTeGLic=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			E7MgMrShqbtppZxxIfB08Jg4lX06Q6TKfc0cGinEjQ0=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/OverviewView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			LywlvOgPACbR6B1zqpXYSmtJKlw=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			UlCTctpww7HTo1qKbpO93fB85GAAORIuPJyH6UE4cTQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/Palette.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			qqqPhKfTqXEwGSu+nAffBljHgpw=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			8vOFuFkYfHVJzp/ExhINeG6zcVFpAxV3qcAscVr6T1U=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/PermissionsView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			kgrF6j5V9ka2TQBMdeMny9OS3nE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			WuIYXwbUgvw4MaLvqQH6WXDUvGLJAVKwKp2Ml3Bf+g8=
+			</data>
+		</dict>
+		<key>Resources/package/Sources/Nexus/RoomsView.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			t0abxzht4S8mObhrFDpQZ6mqjvo=
+			</data>
+			<key>hash2</key>
+			<data>
+			fP+6ekCb6tzZbWhvYBHc0HmLsdj5XeeGxGMx1HpsLII=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/RootView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			HLJIH9uzmTgE1dSAJ64qkeShdTc=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			VjcgSxXUYvjCDJDhGn3pcG+kkuFoZ+pj+/sRnuf+zog=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/SettingsView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			5C98QOV8VNP4nLymHEYSJOdukiE=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			wGxGlGdcGKdVnje0bfqdyPZWRsI7JGoF9ZkccpYuYkM=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/TalkView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			jGE1hU/+tkZmsflSyl7Q05yHeWw=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			+quKdAaAFk6DnlXpWQEBngAVMhZrCbysOOpUUYLEWcA=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/Taskbar.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			1sEkPlJm7WFXykbvY4QcvrksiS8=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			HC186N53K0usxoaWACsT4vm983mWqJ6lST75oKJKaEQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/Verifier.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			94Ni2NfFZREDvg+/5gqS+D97iwg=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			kJgJWsclTynpZrErUWRcxEgpO1W1M6t7NP9fOx8moIA=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/WorkflowsView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			ypSGunlapB2rcOGyVE3aakMAoQ0=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			u9/u43RUIC6bO/ZeKOH9h8cb6j6su8f9s7qHSJ+91vY=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/Nexus/WorldTransitionView.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			v5S6b5pelJANMj0sNGgdKjiTY0k=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			oQkMv89sMKFHNG5ZipdwSDGiWqZJQfOFp9CDwqSTCuc=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/InstallEngine.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			S5qyicpLb0xfnjsCFetiSuwoNZA=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			+qcmugiO8iODp8DImUTSzISOkdl/hV9MsgfMyhUpECQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/InstallerApp.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			nLc0d3BDx20LB2CHK99wOlUgKEM=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			p46TpFY53HoX7LX6eaHcigKeqlR33UDfP2anGPCDvzQ=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/InstallerPanes.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			Kfha98QOliV/mR/rQ0iz3VPzw/U=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			KgJ70LWsLbHQGDMCxFZZnUGPxN9wRTkXEBMMKlmYIcE=
 			</data>
 		</dict>
 		<key>Resources/package/Sources/NexusInstaller/PaneChrome.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+			XUo1AJ3W6uK/rxn5aXS9DO6xUA4=
 			</data>
 			<key>hash2</key>
 			<data>
-			47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+			xsPuyCO986Iwv+61Il9K2YVQptsF19643AujVheDo+E=
 			</data>
 		</dict>
 		<key>Resources/package/install.sh</key>
@@ -585,11 +702,44 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			nCC1a3igoYgHI7NQS3giFBD0K5Y=
+			De9iaYFL3j24U/qq+C5N7CyZ+Do=
 			</data>
 			<key>hash2</key>
 			<data>
-			yh0xGC/wwLGvUzx+TFqSZf5lX4wFwfo10hPku1SRAK0=
+			TDcekvVxaY9GM/bvmRHb9RIjHghWiqoADsMjWkyukKA=
+			</data>
+		</dict>
+		<key>Resources/package/scripts/NexusTri.icns</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			HKBdRYTjQCfDF6d9w7KgTQDqIBM=
+			</data>
+			<key>hash2</key>
+			<data>
+			u+jSDNSUV6sIkCQwTbzdNitS8V0BA4RDKB1vwN3NN9s=
+			</data>
+		</dict>
+		<key>Resources/package/scripts/bootstrap.sh</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			m+CypgWGs9flL32dc1NQEwdVJYw=
+			</data>
+			<key>hash2</key>
+			<data>
+			PeQddgTlca+O2Rcumgd69AfH7IwIgB6LVbJyjm+kxhk=
+			</data>
+		</dict>
+		<key>Resources/package/scripts/make-icon.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			M7A+4K8A+bgiau84OYoAAa+Bo4A=
+			</data>
+			<key>hash2</key>
+			<data>
+			Lv77IDuiWhf8mN+lBbUEck4VulbdE8RAcp4bOrUX26o=
 			</data>
 		</dict>
 	</dict>

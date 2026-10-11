@@ -40,17 +40,25 @@ struct Taskbar: View {
                                     .lineLimit(1)
                                     .fixedSize()
                                     .foregroundColor(selectedTab == i ? .white : Palette.gray)
-                                Rectangle()
-                                    .fill(selectedTab == i ? Palette.accent : Color.clear)
-                                    .frame(height: 2)
+                                ZStack(alignment: .leading) {
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .frame(height: 2)
+                                    Rectangle()
+                                        .fill(Palette.accent)
+                                        .frame(height: 2)
+                                        .scaleEffect(x: selectedTab == i ? 1 : 0, anchor: .center)
+                                        .animation(.spring(response: 0.32, dampingFraction: 0.72), value: selectedTab)
+                                }
                             }
                             .padding(.top, 12)
                             .padding(.horizontal, 6)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(TaskbarTabStyle())
                     }
                 }
+                .animation(.easeOut(duration: 0.15), value: selectedTab)
 
                 Spacer(minLength: 8)
 
@@ -123,5 +131,20 @@ struct Taskbar: View {
                 .frame(height: 1)
         }
         .background(Color.black)
+    }
+}
+
+// MARK: - Press-scale for taskbar tabs
+
+struct TaskbarTabStyle: ButtonStyle {
+    @State private var pressed = false
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(pressed ? 0.94 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .onChange(of: configuration.isPressed) { _, p in
+                withAnimation(.easeOut(duration: 0.12)) { pressed = p }
+            }
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

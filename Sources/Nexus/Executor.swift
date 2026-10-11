@@ -49,15 +49,15 @@ actor Executor {
     
     func editFile(path: String, oldText: String, newText: String) async -> FileResult {
         let expanded = expandPath(path)
-        let result = await readFile(path: path)
+        let result = await readFile(path: expanded)
         guard result.success, let content = result.content else {
-            return FileResult(path: path, content: nil, success: false, error: "Failed to read file")
+            return FileResult(path: expanded, content: nil, success: false, error: "Failed to read file")
         }
         if content.contains(oldText) {
             let newContent = content.replacingOccurrences(of: oldText, with: newText)
-            return await writeFile(path: path, content: newContent)
+            return await writeFile(path: expanded, content: newContent)
         } else {
-            return FileResult(path: path, content: nil, success: false, error: "Old text not found in file")
+            return FileResult(path: expanded, content: nil, success: false, error: "Old text not found in file")
         }
     }
     
