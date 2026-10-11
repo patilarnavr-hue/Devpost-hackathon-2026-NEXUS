@@ -235,6 +235,53 @@ final class TriangleView: NSView {
         }
     }
 
+    // MARK: genie — triangle detaches, lands on lens; lens grows from it
+
+    func detachHold() {
+        tri.removeAnimation(forKey: "orbit")
+    }
+
+    func landOnLens() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tri.transform = CATransform3DMakeScale(0.62, 0.62, 1)
+        CATransaction.commit()
+        tri.removeAnimation(forKey: "transform.scale")
+        let s = CASpringAnimation(keyPath: "transform.scale")
+        s.fromValue = 1.0
+        s.toValue = 0.62
+        s.damping = 14
+        s.stiffness = 220
+        s.mass = 0.5
+        s.duration = 0.5
+        tri.add(s, forKey: "land")
+        let r = CASpringAnimation(keyPath: "transform.rotation.z")
+        r.fromValue = -0.4
+        r.toValue = 0
+        r.damping = 13
+        r.stiffness = 180
+        r.mass = 0.5
+        r.duration = 0.55
+        tri.add(r, forKey: "landSpin")
+    }
+
+    func takeOff() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tri.transform = CATransform3DIdentity
+        CATransaction.commit()
+        tri.removeAnimation(forKey: "land")
+        tri.removeAnimation(forKey: "landSpin")
+        let s = CASpringAnimation(keyPath: "transform.scale")
+        s.fromValue = 0.62
+        s.toValue = 1.0
+        s.damping = 11
+        s.stiffness = 190
+        s.mass = 0.55
+        s.duration = 0.55
+        tri.add(s, forKey: "takeoff")
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -530,6 +577,7 @@ final class OverlayController {
     }
 
     var agentActive = false
+    var detached = false
     var execTarget: CGPoint? {
         didSet {
             guard let t = execTarget else { triView.trajEnd = nil; return }
@@ -555,17 +603,19 @@ final class OverlayController {
             lastPress = pressed
             triView.setGlow(pressed)
         }
-        triView.ensureOrbit()
+        if !detached { triView.ensureOrbit() }
         let tx = m.x, ty = m.y
         let dt: CGFloat = 1.0 / 60.0
         let k = 1 - exp(-dt * 14)
         pos.x += (tx - pos.x) * k
         pos.y += (ty - pos.y) * k
         angle += (tiltAngle(dx: tx - (pos.x - (tx - (tx - pos.x)) * 0), dy: 0) - angle) * k
-        panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
+        if !detached {
+            panel.setFrameOrigin(NSPoint(x: pos.x - 60 + 46, y: pos.y - 60 + 34))
+        }
 
         // hover target acquisition (throttled) — paused while the agent drives
-        if !agentActive && Date().timeIntervalSince(dwellStart) > 0.25 {
+        if !agentActive && !detached && Date().timeIntervalSince(dwellStart) > 0.25 {
             dwellStart = Date()
             let ax = axPoint(mouse)
             if let el = elementAt(ax) {
@@ -977,6 +1027,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
     func toggle() { isOpen ? close() : open() }
 
     func open() {
+        guard !isOpen else { return }
         rows = []; rebuildRows(); resize(0)
         field.stringValue = ""
         reflectState(.idle)
@@ -984,30 +1035,73 @@ final class LensController: NSObject, NSTextFieldDelegate {
         chatMode = false
         subLabel.stringValue = "COMMAND"
         isOpen = true
-        panel.setFrameOrigin(positionForHeight(104))
-        panel.orderFrontRegardless()
-        panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(field)
-        NSApp.activate(ignoringOtherApps: true)
-        startFollow()
         startKeyMonitor()
-        State.shared.overlay?.triView.modeSwitch()
         if clipper == nil {
             loadClips()
             clipper = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in self?.pollClips() }
             RunLoop.main.add(clipper!, forMode: .common)
         }
+
+        guard let overlay = State.shared.overlay else { return }
+        overlay.detached = true
+        overlay.panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.cursorWindow)) + 30)
+        overlay.triView.detachHold()
+
+        let triFrame = overlay.panel.frame
+        let triCenter = NSPoint(x: triFrame.midX, y: triFrame.midY)
+        let final = panel.frame
+        let start = NSRect(x: triCenter.x - 14, y: triCenter.y - 10, width: 28, height: 20)
+
+        panel.setFrame(start, display: true)
+        panel.alphaValue = 0.15
+        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeFirstResponder(field)
+        NSApp.activate(ignoringOtherApps: true)
+        overlay.triView.landOnLens()
+
+        let perch = NSPoint(x: final.minX + 56 - 60, y: final.maxY + 2 - 60)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.42
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().setFrame(final, display: true)
+            panel.animator().alphaValue = 1.0
+            overlay.panel.animator().setFrameOrigin(perch)
+        } completionHandler: { [weak self] in
+            guard let self = self, self.isOpen else { return }
+            self.panel.alphaValue = 1
+            self.startFollow()
+        }
     }
 
     func close() {
+        guard isOpen else { return }
         agentAbort()
         isOpen = false
         pinned = false
         chatMode = false
         stopFollow()
         stopKeyMonitor()
-        panel.orderOut(nil)
-        State.shared.overlay?.triView.modeSwitch()
+        let overlay = State.shared.overlay
+        let triFrame = overlay?.panel.frame
+            ?? NSRect(x: NSEvent.mouseLocation.x, y: NSEvent.mouseLocation.y, width: 0, height: 0)
+        let triCenter = NSPoint(x: triFrame.midX, y: triFrame.midY)
+        let end = NSRect(x: triCenter.x - 14, y: triCenter.y - 10, width: 28, height: 20)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.3
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().setFrame(end, display: true)
+            panel.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            guard let self = self, !self.isOpen else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1
+            if let overlay = State.shared.overlay {
+                overlay.detached = false
+                overlay.panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.cursorWindow)))
+            }
+        }
+        overlay?.triView.takeOff()
     }
 
     @objc private func doClose() { close() }
