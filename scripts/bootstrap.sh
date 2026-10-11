@@ -21,3 +21,6 @@ cd "$DIR"
 bash install.sh
 
 say "Done. NEXUS.app + NexusTriangle.app are in /Applications."
+
+# point the helper's reinstall at this source dir
+defaults write com.nexus.helper nexus.src -string "$DIR" 2>/dev/null || true

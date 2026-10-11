@@ -28,9 +28,13 @@
 		<data>
 		ywrSRw/efBIHYG22qo4pzCukpaU=
 		</data>
+		<key>Resources/package/NEXUSHelper/main.swift</key>
+		<data>
+		rqlHucT9E9cUrk1GqQ2xXVXxwDw=
+		</data>
 		<key>Resources/package/NexusTriangle/main.swift</key>
 		<data>
-		zY8WMCoy8uQHEbf/ltXZSOgpDoc=
+		qKDSIcxU05SnjX5zEcM7IE+Q/Vg=
 		</data>
 		<key>Resources/package/Package.swift</key>
 		<data>
@@ -186,7 +190,7 @@
 		</data>
 		<key>Resources/package/nexus-setup.sh</key>
 		<data>
-		De9iaYFL3j24U/qq+C5N7CyZ+Do=
+		WAt8W6Nl/6IW95Q8N3DzUYHUZJk=
 		</data>
 		<key>Resources/package/scripts/NexusTri.icns</key>
 		<data>
@@ -194,7 +198,7 @@
 		</data>
 		<key>Resources/package/scripts/bootstrap.sh</key>
 		<data>
-		m+CypgWGs9flL32dc1NQEwdVJYw=
+		3vMMZ46qfMVMb6SP1PVyvcetozk=
 		</data>
 		<key>Resources/package/scripts/make-icon.swift</key>
 		<data>
@@ -269,15 +273,26 @@
 			VKIVnDOF612JrgpKnpsg2MBrSJPzwCXNYRYZPB/LSSQ=
 			</data>
 		</dict>
+		<key>Resources/package/NEXUSHelper/main.swift</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			rqlHucT9E9cUrk1GqQ2xXVXxwDw=
+			</data>
+			<key>hash2</key>
+			<data>
+			o4LSjlUDsroCDzKsE9ORdGrmVyE+aSNI3HRowTTXl28=
+			</data>
+		</dict>
 		<key>Resources/package/NexusTriangle/main.swift</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			zY8WMCoy8uQHEbf/ltXZSOgpDoc=
+			qKDSIcxU05SnjX5zEcM7IE+Q/Vg=
 			</data>
 			<key>hash2</key>
 			<data>
-			RDlo7upauIylKYLeBbK8rhqvLjHtHlHpmxBb6L9SDZU=
+			vjBs7NOyqu0wh2Uw/ju7DWhnpbujErdAr5stCu7HFJY=
 			</data>
 		</dict>
 		<key>Resources/package/Package.swift</key>
@@ -702,11 +717,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			De9iaYFL3j24U/qq+C5N7CyZ+Do=
+			WAt8W6Nl/6IW95Q8N3DzUYHUZJk=
 			</data>
 			<key>hash2</key>
 			<data>
-			TDcekvVxaY9GM/bvmRHb9RIjHghWiqoADsMjWkyukKA=
+			32D6GUiB1JvUbKqVywqiW4KK9dboIfI8ul4lNQ/R3js=
 			</data>
 		</dict>
 		<key>Resources/package/scripts/NexusTri.icns</key>
@@ -724,11 +739,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			m+CypgWGs9flL32dc1NQEwdVJYw=
+			3vMMZ46qfMVMb6SP1PVyvcetozk=
 			</data>
 			<key>hash2</key>
 			<data>
-			PeQddgTlca+O2Rcumgd69AfH7IwIgB6LVbJyjm+kxhk=
+			mYuxTiuR4+i6M98gpvyoXzJOSO6MoD8dtnuirHY3vfI=
 			</data>
 		</dict>
 		<key>Resources/package/scripts/make-icon.swift</key>

@@ -1,0 +1,8 @@
+#!/bin/sh
+# post-merge — whenever you pull new NEXUS commits, greet the user with the Helper.
+if [ -x "/Applications/NEXUS Helper.app/Contents/MacOS/NEXUS Helper" ]; then
+  open -g "/Applications/NEXUS Helper.app"
+fi
+if [ -f "NexusTriangle/main.swift" ] || [ -d "Sources" ]; then
+  echo "NEXUS updated — rebuild:  bash install.sh"
+fi

@@ -1369,6 +1369,7 @@ final class LensController: NSObject, NSTextFieldDelegate {
     private let searcher = FileSearch()
     private var appCache: [(String, URL)]?
     private var pendingQuery: String = ""
+    private var aliasDepth: Int = 0
     private var followTimer: Timer?
     private var keyMonitor: Any?
     private(set) var pinned = false
@@ -2032,7 +2033,8 @@ final class LensController: NSObject, NSTextFieldDelegate {
         agentSteps = [
             "rename <f> to <n> · move/copy <a> to <b> · trash <f>",
             "mkdir <name> [in <path>] · new file <name> · ls [path]",
-            "cat <file> · open <folder-or-file> · run <shell cmd> — real exit code",
+            "cat <file> · write <f> :: <text> · edit <f> :: <old> → <new>",
+            "open <folder-or-file> · run <shell cmd> — real exit code",
             "find <file> · reveal <file> · open <app> · screenshot",
             "agent <task> — AI drives the cursor (needs Accessibility)",
             "record <name> — TEACH a chore · stop — save with AI intent",
@@ -2041,6 +2043,8 @@ final class LensController: NSObject, NSTextFieldDelegate {
             "every day at 9am do <chore> — SCHEDULE a mission · schedules · unschedule <x>",
             "watch downloads — auto-file new files · watches · unwatch <x>",
             "teach <name> <intent> — rewrite what the chore means",
+            "ALIASES — alias wd = watch downloads · wd runs it · aliases · unalias wd",
+            "aliaslen 3 — letters per alias (2–3 default, up to 6)",
             "clip / clip <query> — clipboard inbox · esc dismiss · ⌘P pin"
         ]
         rebuildSteps()
@@ -2115,6 +2119,59 @@ final class LensController: NSObject, NSTextFieldDelegate {
 
         if low == "help" || low == "?" || low == "commands" || low.contains("help") {
             showHelp()
+            return
+        }
+
+        if low == "aliaslen " || low.hasPrefix("aliaslen ") {
+            let n = Int(low.dropFirst(9).trimmingCharacters(in: .whitespaces)) ?? 0
+            guard (1...6).contains(n) else { respond("USAGE — aliaslen 1…6 (current \(AliasStore.minLen))", .blocked); return }
+            AliasStore.setLen(n)
+            respond("ALIAS LENGTH = \(n) LETTERS", .verified)
+            return
+        }
+
+        if low == "alias" || low == "aliases" {
+            agentSteps = AliasStore.describe().components(separatedBy: "\n")
+            rebuildSteps(); resize(agentSteps.count)
+            State.shared.set(.verified, "ALIASES — \(AliasStore.items.count)")
+            return
+        }
+        if low.hasPrefix("unalias ") {
+            AliasStore.remove(String(text.dropFirst(8)))
+            respond("UNALIASED — \(String(text.dropFirst(8)).uppercased())", .verified)
+            return
+        }
+        if low.hasPrefix("alias ") {
+            let spec = String(text.dropFirst(6))
+            if let eq = spec.range(of: "=") {
+                let name = String(spec[..<eq.lowerBound]).trimmingCharacters(in: .whitespaces)
+                let action = String(spec[eq.upperBound...]).trimmingCharacters(in: .whitespaces)
+                if let err = AliasStore.set(name, action) {
+                    respond(err, .blocked)
+                } else {
+                    respond("ALIAS SET — \(name.lowercased()) → \(action)", .verified)
+                }
+            } else {
+                let n = spec.trimmingCharacters(in: .whitespaces).lowercased()
+                if let a = AliasStore.items.first(where: { $0.name == n }) {
+                    respond("\(a.name) → \(a.action)", .verified)
+                } else {
+                    respond("NO ALIAS — \(n)", .blocked)
+                }
+            }
+            return
+        }
+
+        // — alias expansion before any other matching —
+        if let expanded = AliasStore.resolve(low) {
+            bridgeLog("alias", "\(low) → \(expanded)")
+            if aliasDepth < 3 {
+                aliasDepth += 1
+                route(expanded)
+                aliasDepth -= 1
+            } else {
+                respond("ALIAS LOOP — \(low)", .blocked)
+            }
             return
         }
 
@@ -2249,6 +2306,14 @@ final class LensController: NSObject, NSTextFieldDelegate {
         if low == "touch" || low.hasPrefix("touch ") || low.hasPrefix("new file ") {
             let a = low.hasPrefix("new file ") ? String(text.dropFirst(9)) : String(text.dropFirst(5))
             skillTouch(a.trimmingCharacters(in: .whitespaces)); return
+        }
+        if low.hasPrefix("write ") || low.hasPrefix("save ") {
+            let a = low.hasPrefix("write ") ? String(text.dropFirst(6)) : String(text.dropFirst(5))
+            skillWrite(a); return
+        }
+        if low.hasPrefix("edit ") || low.hasPrefix("replace ") {
+            let a = low.hasPrefix("edit ") ? String(text.dropFirst(5)) : String(text.dropFirst(8))
+            skillEdit(a); return
         }
         if low == "open" || low.hasPrefix("open ") {
             let arg = String(text.dropFirst(4)).trimmingCharacters(in: .whitespaces)
@@ -3258,7 +3323,150 @@ enum ChoreStore {
     }
 }
 
-// MARK: - Scheduled missions
+// MARK: - Aliases — 2–3 letter shortcuts bound to any action
+
+struct Alias: Codable, Identifiable {
+    var id: String { name }
+    var name: String     // "wd", "cf"…
+    var action: String   // "watch downloads" — supports % placeholder for args
+    var created: Double
+}
+
+private let aliasLenKey = "nexus.aliasLen"
+
+private let builtinCommands: Set<String> = [
+    "run", "rename", "mkdir", "move", "copy", "duplicate", "trash", "delete",
+    "ls", "list", "dir", "cat", "read", "touch", "write", "edit", "open",
+    "find", "search", "clip", "chain", "schedule", "watch", "unwatch",
+    "replay", "play", "do", "teach", "agent", "stop", "help", "macros",
+    "chores", "skills", "alias", "unalias", "aliaslen", "schedules",
+    "watches", "record", "agent", "talk", "missions"
+]
+
+enum AliasStore {
+    static var items: [Alias] = load()
+
+    static var file: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Nexus/aliases.json")
+    }
+
+    static var minLen: Int { max(1, UserDefaults.standard.integer(forKey: aliasLenKey) == 0 ? 2 : UserDefaults.standard.integer(forKey: aliasLenKey)) }
+    static func setLen(_ n: Int) { UserDefaults.standard.set(max(1, min(6, n)), forKey: aliasLenKey) }
+
+    static func load() -> [Alias] {
+        guard let d = try? Data(contentsOf: file) else { return [] }
+        return (try? JSONDecoder().decode([Alias].self, from: d)) ?? []
+    }
+
+    static func save() {
+        let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? enc.encode(items).write(to: file)
+    }
+
+    /// Set or replace. Returns error string or nil on success.
+    static func set(_ name: String, _ action: String) -> String? {
+        let n = name.trimmingCharacters(in: .whitespaces).lowercased()
+        let a = action.trimmingCharacters(in: .whitespaces)
+        guard !a.isEmpty else { return "alias needs an action — alias \(name) = <do something>" }
+        guard n.count == minLen else { return "name must be exactly \(minLen) characters — change with: aliaslen <n>" }
+        guard n.allSatisfy({ $0.isLetter }) else { return "letters only" }
+        guard !builtinCommands.contains(n) else { return "\(n) is a built-in command" }
+        if let i = items.firstIndex(where: { $0.name == n }) {
+            items[i].action = a
+        } else {
+            items.append(Alias(name: n, action: a, created: Date().timeIntervalSince1970))
+        }
+        save()
+        return nil
+    }
+
+    static func remove(_ name: String) -> Bool {
+        let n = name.trimmingCharacters(in: .whitespaces).lowercased()
+        let before = items.count
+        items.removeAll { $0.name == n }
+        if items.count != before { save(); return true }
+        return false
+    }
+
+    /// Exact-name lookup, with optional arg appending for % actions.
+    static func resolve(_ typed: String) -> String? {
+        let t = typed.lowercased().trimmingCharacters(in: .whitespaces)
+        guard let a = items.first(where: { a -> Bool in
+            if t == a.name { return true }
+            if a.action.contains("%") && t.hasPrefix(a.name + " ") { return true }
+            return false
+        }) else { return nil }
+        if a.action.contains("%") {
+            let rest = String(t.dropFirst(a.name.count)).trimmingCharacters(in: .whitespaces)
+            return a.action.replacingOccurrences(of: "%", with: rest)
+        }
+        return a.action
+    }
+
+    static func describe() -> String {
+        items.isEmpty
+            ? "NO ALIASES — make one:  alias wd = watch downloads"
+            : items.map { "\($0.name) → \($0.action)" }.joined(separator: "\n")
+    }
+}
+
+// MARK: - Write & edit skills (fill, replace — deterministic)
+
+extension LensController {
+    private func skillWrite(_ args: String) {
+        // write <file> :: <text>  (creates or overwrites with text)
+        guard let sep = args.range(of: "::") else {
+            respond("USAGE — write <file> :: <text>", .blocked); return
+        }
+        let name = String(args[..<sep.lowerBound]).trimmingCharacters(in: .whitespaces)
+        let body = String(args[sep.upperBound...]).trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !body.isEmpty else {
+            respond("USAGE — write <file> :: <text>", .blocked); return
+        }
+        let path = resolvePath(name)
+        let ok = FileManager.default.createFile(atPath: path, contents: body.data(using: .utf8))
+        respond(ok ? "WROTE \(body.count) CHARS — \((path as NSString).lastPathComponent)" : "WRITE FAILED — \(name)",
+                ok ? .verified : .blocked)
+    }
+
+    private func skillEdit(_ args: String) {
+        // edit <file> :: <old> → <new>
+        guard let sep = args.range(of: "::") else {
+            respond("USAGE — edit <file> :: <old> → <new>", .blocked); return
+        }
+        let name = String(args[..<sep.lowerBound]).trimmingCharacters(in: .whitespaces)
+        var pair = String(args[sep.upperBound...]).trimmingCharacters(in: .whitespaces)
+        guard let arrow = pair.range(of: "→") ?? pair.range(of: "->") else {
+            respond("USAGE — edit <file> :: <old> → <new>", .blocked); return
+        }
+        let old = String(pair[..<arrow.lowerBound]).trimmingCharacters(in: .whitespaces)
+        let new = String(pair[arrow.upperBound...])
+            .replacingOccurrences(of: "→", with: "").replacingOccurrences(of: "->", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        guard !old.isEmpty else {
+            respond("NEED — <old> text to replace", .blocked); return
+        }
+        let path = resolvePath(name)
+        guard let data = FileManager.default.contents(atPath: path),
+              let text = String(data: data, encoding: .utf8) else {
+            respond("CANNOT READ — \(name)", .blocked); return
+        }
+        guard text.contains(old) else {
+            respond("TEXT NOT FOUND — \(name)", .blocked); return
+        }
+        let out = text.replacingOccurrences(of: old, with: new)
+        if out.data(using: .utf8).flatMap({ FileManager.default.createFile(atPath: path, contents: $0) }) == true {
+            let n = out.split(separator: "\n").count
+            agentSteps = ["\( (path as NSString).lastPathComponent ) — \(n) lines", "replaced: \"\(old)\"", "with: \"\(new)\""]
+            rebuildSteps(); resize(agentSteps.count)
+            respond("EDITED — \((path as NSString).lastPathComponent)", .verified)
+        } else {
+            respond("WRITE FAILED — \(name)", .blocked)
+        }
+    }
+}
 
 struct SchedMission: Codable {
     var id: String

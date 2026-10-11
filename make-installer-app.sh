@@ -19,7 +19,7 @@ rsync -a \
   --exclude .nexus-copy \
   "$PKG/Package.swift" "$PKG/README.md" "$PKG/LICENSE" "$PKG/CONTRIBUTING.md" \
   "$PKG/install.sh" "$PKG/nexus-setup.sh" \
-  "$PKG/Sources" "$PKG/NexusTriangle" "$PKG/FixturePackage" "$PKG/scripts" \
+  "$PKG/Sources" "$PKG/NexusTriangle" "$PKG/NEXUSHelper" "$PKG/FixturePackage" "$PKG/scripts" \
   "$APP/Contents/Resources/package/"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'

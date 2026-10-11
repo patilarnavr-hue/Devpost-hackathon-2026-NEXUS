@@ -10,6 +10,7 @@ set -euo pipefail
 PKG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRI_DST="/Applications/NexusTriangle.app"
 NEXUS_DST="/Applications/NEXUS.app"
+HELPER_DST="/Applications/NEXUS Helper.app"
 KEYCHAIN="$HOME/Library/Keychains/nexus-sign.keychain-db"
 KEYCHAIN_NAME="nexus-sign.keychain"
 KEYCHAIN_PW="nexus"
@@ -204,6 +205,43 @@ sign_app "$NEXUS_DST"
 rm -rf "$TMPU"
 ok "Installed: $NEXUS_DST"
 
+# ── NEXUS Helper (install assistant — same local Ollama brain) ──
+HELPER_SRC="$PKG/NEXUSHelper/main.swift"
+if [ -f "$HELPER_SRC" ]; then
+  step "Building NEXUS Helper — universal (arm64 + x86_64)"
+  TMPU="$(mktemp -d)"
+  swiftc -swift-version 5 -O -target "$NAT_ARCH-apple-macos14.0" "$HELPER_SRC" -o "$TMPU/h-$NAT_ARCH"
+  swiftc -swift-version 5 -O -target "$OTHER_ARCH-apple-macos14.0" "$HELPER_SRC" -o "$TMPU/h-$OTHER_ARCH"
+  lipo -create "$TMPU/h-$NAT_ARCH" "$TMPU/h-$OTHER_ARCH" -output "$TMPU/NEXUS Helper"
+  mkdir -p "$HELPER_DST/Contents/MacOS" "$HELPER_DST/Contents/Resources"
+  cp "$TMPU/NEXUS Helper" "$HELPER_DST/Contents/MacOS/NEXUS Helper"
+  [ -f "$PKG/scripts/NexusTri.icns" ] && cp "$PKG/scripts/NexusTri.icns" "$HELPER_DST/Contents/Resources/NexusTri.icns"
+  cat > "$HELPER_DST/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>NEXUS Helper</string>
+    <key>CFBundleIdentifier</key><string>com.nexus.helper</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>NEXUS Helper</string>
+    <key>CFBundleDisplayName</key><string>NEXUS Helper</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleIconFile</key><string>NexusTri</string>
+</dict>
+</plist>
+PLIST
+  sign_app "$HELPER_DST"
+  defaults write com.nexus.helper nexus.src -string "$PKG"
+  rm -rf "$TMPU"
+  ok "Installed: $HELPER_DST"
+fi
+
 # ── demo fixture ──
 step "Demo fixture (Verifier's check-of-record target)"
 if [ -d "$PKG/FixturePackage" ]; then
@@ -249,8 +287,12 @@ step "Starting NEXUS + Red Triangle"
 pkill -x NexusTriangle 2>/dev/null || true
 pkill -x Nexus 2>/dev/null || true
 sleep 1
-open "$NEXUS_DST"
 open "$TRI_DST"
+open "$NEXUS_DST"
+if [ -d "$HELPER_DST" ]; then
+  pkill -f "NEXUS Helper" 2>/dev/null || true
+  open "$HELPER_DST"
+fi
 sleep 1
 ok "Running"
 
@@ -265,8 +307,9 @@ echo "  prompts automatically the first time you use it."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
 
 printf '\n\033[1;31mDone — everything is installed.\033[0m\n'
-echo "  NEXUS.app   Desktop + /Applications (main mission UI)"
-echo "  ▲ triangle  menu bar — the companion"
+echo "  NEXUS.app    Desktop + /Applications (main mission UI)"
+echo "  ▲ triangle   menu bar — the companion"
+echo "  NEXUS Helper  install assistant — ask it doctor / fix / reset / reinstall"
 echo ""
 echo "  Red Triangle lens (⌥Space):"
 echo "    help                  all commands"
